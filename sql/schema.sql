@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS enterprise_sla_events (
 );
 
 -- Derived views for analytics
-CREATE OR REPLACE VIEW subscriber_experience_scores AS
+CREATE VIEW IF NOT EXISTS subscriber_experience_scores AS
 SELECT
   s.subscriber_id,
   s.account_id,
@@ -197,7 +197,7 @@ LEFT JOIN subscriber_usage_summary u ON (
 GROUP BY s.subscriber_id, s.account_id, s.line_type, s.home_market_id,
          s.churn_risk_band, s.monthly_revenue;
 
-CREATE OR REPLACE VIEW market_degradation_summary AS
+CREATE VIEW IF NOT EXISTS market_degradation_summary AS
 SELECT
   m.market_id,
   m.market_name,
@@ -230,7 +230,7 @@ LEFT JOIN network_experience_events e ON (
 LEFT JOIN subscriber_experience_scores ses ON m.market_id = ses.home_market_id
 GROUP BY m.market_id, m.market_name, m.region_name;
 
-CREATE OR REPLACE VIEW at_risk_high_value_subscribers AS
+CREATE VIEW IF NOT EXISTS at_risk_high_value_subscribers AS
 SELECT
   s.subscriber_id,
   s.account_id,
@@ -264,7 +264,7 @@ WHERE
   AND s.monthly_revenue >= 50 -- high-value threshold
   AND ses.experience_score < 60; -- poor experience
 
-CREATE OR REPLACE VIEW intervention_effectiveness AS
+CREATE VIEW IF NOT EXISTS intervention_effectiveness AS
 SELECT
   ra.action_type,
   ra.channel,
