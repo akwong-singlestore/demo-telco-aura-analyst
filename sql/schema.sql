@@ -24,8 +24,8 @@ CREATE ROWSTORE REFERENCE TABLE IF NOT EXISTS cell_sites (
   technology_types TEXT NOT NULL, -- JSON array: ["4G", "5G"]
   capacity_subscribers INT NOT NULL,
 
-  KEY (market_id),
-  FOREIGN KEY (market_id) REFERENCES market_reference(market_id)
+  KEY (market_id)
+  -- Note: Foreign key removed for SingleStore Helios compatibility
 );
 
 -- Master subscriber dimension
