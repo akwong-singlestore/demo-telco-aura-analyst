@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS network_experience_events (
 
   SHARD KEY (subscriber_id),
   SORT KEY (event_ts),
+  KEY (event_id) USING HASH,
   KEY (market_id, event_ts) USING HASH,
   KEY (cell_site_id, event_ts) USING HASH,
   KEY (event_type) USING HASH
@@ -111,6 +112,7 @@ CREATE TABLE IF NOT EXISTS care_cases (
 
   SHARD KEY (subscriber_id),
   SORT KEY (opened_ts),
+  KEY (case_id) USING HASH,
   KEY (issue_category) USING HASH,
   KEY (channel) USING HASH
 );
@@ -131,6 +133,7 @@ CREATE TABLE IF NOT EXISTS retention_actions (
 
   SHARD KEY (subscriber_id),
   SORT KEY (action_ts),
+  KEY (action_id) USING HASH,
   KEY (action_type) USING HASH,
   KEY (reason_code) USING HASH
 );
@@ -161,6 +164,7 @@ CREATE TABLE IF NOT EXISTS enterprise_sla_events (
 
   SHARD KEY (enterprise_account_id),
   SORT KEY (event_ts),
+  KEY (event_id) USING HASH,
   KEY (breach_type) USING HASH
 );
 
