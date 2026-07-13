@@ -75,7 +75,7 @@ func GenerateEvents(state *State) ([]NetworkEvent, []UsageSummary, []CareCase, [
 
 			// Trigger retention actions for at-risk
 			if sub.ChurnRiskBand == "high" || sub.ChurnRiskBand == "critical" {
-				if state.Rand.Float64() < 0.04 {
+				if state.Rand.Float64() < 0.15 { // Increased from 0.04 to 15% for affected subscribers
 					retentionActions = append(retentionActions, generateRetentionAction(state, &sub))
 				}
 			}

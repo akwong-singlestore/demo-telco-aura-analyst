@@ -28,7 +28,7 @@ func main() {
 		SubscriberCount:     *subscriberCount,
 		EventProbability:    0.02,
 		CareCaseProbability: 0.01,
-		RetentionActionProb: 0.005,
+		RetentionActionProb: 0.03, // Increased from 0.005 to 3% for better demo visibility
 	}
 
 	gen.InitReferenceData(state)
