@@ -3,7 +3,6 @@ import * as React from "react";
 import { useRecoilState } from "recoil";
 
 import { ConfigInput } from "@/components/ConfigInput";
-import { ScaleFactorSelector } from "@/components/ScaleFactorSelector";
 import {
   connectionDatabase,
   connectionHost,

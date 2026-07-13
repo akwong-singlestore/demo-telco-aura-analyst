@@ -207,12 +207,6 @@ export const analystPendingQuestion = atom<string | null>({
   default: null,
 });
 
-export const configScaleFactor = atom({
-  key: "configScaleFactor",
-  default: { name: "1x", value: 1 },
-  effects: [localStorageEffect()],
-});
-
 export const tickDurationMs = atom<number | undefined>({
   key: "tickDurationMs",
   default: undefined,
