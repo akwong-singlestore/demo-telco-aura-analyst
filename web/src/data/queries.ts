@@ -239,8 +239,8 @@ export const isConnected = async (config: ConnectionConfig): Promise<boolean> =>
   }
 };
 
-export const schemaObjects = async (config: ConnectionConfig): Promise<any[]> => {
-  return [];
+export const schemaObjects = async (config: ConnectionConfig): Promise<{ [key: string]: boolean }> => {
+  return {};
 };
 
 export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
