@@ -24,7 +24,7 @@ const defaultSchemaObjects: { [key: string]: boolean } = Object.fromEntries(
 
 export const useSchemaObjects = (paused = false) => {
   const config = useRecoilValue(connectionConfig);
-  return useSWR(
+  return useSWR<{ [key: string]: boolean }>(
     ["schemaObjects", config, paused],
     () => schemaObjects(config),
     {

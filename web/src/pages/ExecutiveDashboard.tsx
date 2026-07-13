@@ -146,11 +146,23 @@ const AuraSidebar: React.FC = () => {
 };
 
 export const ExecutiveDashboard: React.FC = () => {
-  const { data: kpis, isLoading: kpisLoading } = useExecutiveKPIs();
-  const { data: markets, isLoading: marketsLoading } = useMarketHealth();
-  const { data: atRisk, isLoading: atRiskLoading } = useAtRiskSubscribers();
-  const { data: interventions, isLoading: interventionsLoading } = useInterventionPerformance();
-  const { data: churnTrend, isLoading: trendLoading } = useChurnRiskTrend();
+  const kpisRes = useExecutiveKPIs();
+  const marketsRes = useMarketHealth();
+  const atRiskRes = useAtRiskSubscribers();
+  const interventionsRes = useInterventionPerformance();
+  const churnTrendRes = useChurnRiskTrend();
+
+  const kpis = kpisRes.data;
+  const markets = marketsRes.data;
+  const atRisk = atRiskRes.data;
+  const interventions = interventionsRes.data;
+  const churnTrend = churnTrendRes.data;
+
+  const kpisLoading = !kpisRes.data && !kpisRes.error;
+  const marketsLoading = !marketsRes.data && !marketsRes.error;
+  const atRiskLoading = !atRiskRes.data && !atRiskRes.error;
+  const interventionsLoading = !interventionsRes.data && !interventionsRes.error;
+  const trendLoading = !churnTrendRes.data && !churnTrendRes.error;
 
   const bgColor = useColorModeValue("gray.50", "gray.900");
   const cardBg = useColorModeValue("white", "gray.800");

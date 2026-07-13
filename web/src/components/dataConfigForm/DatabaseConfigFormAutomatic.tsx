@@ -64,7 +64,6 @@ export const DatabaseConfigForm = ({
         />
       </SimpleGrid>
       {databaseInput}
-      {scaleFactor}
     </Stack>
   );
 };
