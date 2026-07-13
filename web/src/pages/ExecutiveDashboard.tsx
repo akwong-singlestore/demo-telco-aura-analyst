@@ -348,14 +348,15 @@ export const ExecutiveDashboard: React.FC = () => {
                   ]}
                   layout={{
                     autosize: true,
-                    height: 180,
-                    margin: { l: 40, r: 20, b: 40, t: 10 },
+                    height: 200,
+                    margin: { l: 40, r: 20, b: 60, t: 10 },
                     paper_bgcolor: chartIsDark ? "#2D3748" : "white",
                     plot_bgcolor: chartIsDark ? "#2D3748" : "#EDF2F7",
                     font: { color: chartIsDark ? "white" : "#2a3f5f", size: 10 },
                     xaxis: {
                       showgrid: false,
                       tickangle: -45,
+                      automargin: true,
                     },
                     yaxis: {
                       title: 'Subscribers',
