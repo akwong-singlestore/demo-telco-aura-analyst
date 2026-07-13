@@ -1,9 +1,5 @@
 package gen
 
-import (
-	"math/rand"
-)
-
 // SelectNextScenario picks a scenario to run
 func SelectNextScenario(state *State) {
 	scenarios := []Scenario{

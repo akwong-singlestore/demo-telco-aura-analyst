@@ -1,0 +1,191 @@
+const rectifyHostAddress = (hostAddress: string) => {
+  if (
+    hostAddress.toLowerCase().startsWith("http://") ||
+    hostAddress.toLowerCase().startsWith("https://") ||
+    hostAddress === ""
+  ) {
+    return hostAddress;
+  } else {
+    return `https://${hostAddress}`;
+  }
+};
+
+export type ConnectionConfig = {
+  host: string;
+  user: string;
+  password: string;
+  database: string;
+  ctx?: AbortController;
+};
+
+export type ConnectionConfigOptionalDatabase = Omit<
+  ConnectionConfig,
+  "database"
+> & {
+  database?: string;
+};
+
+export type SQLValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: SQLValue }
+  | Array<SQLValue>;
+
+export type Row = { [key: string]: SQLValue };
+
+const regexSQLErrorCode = /^Error (?<code>\d+):/;
+
+const DEBUG = false;
+
+export class SQLError extends Error {
+  code: number;
+  sql: string;
+
+  constructor(msg: string, sql: string, code?: number) {
+    super(msg);
+    // https://stackoverflow.com/a/41429145/65872
+    Object.setPrototypeOf(this, SQLError.prototype);
+    this.sql = sql;
+
+    if (code) {
+      this.code = code;
+    } else {
+      const matched = msg.match(regexSQLErrorCode);
+      this.code = matched ? parseInt(matched.groups?.code || "-1", 10) : -1;
+    }
+  }
+
+  isUnknownDatabase() {
+    return this.code === 1049;
+  }
+
+  isDatabaseRecovering() {
+    return this.code === 2269;
+  }
+
+  isPlanMissing() {
+    return this.code === 1885;
+  }
+}
+
+export const QueryOne = async <T = Row>(
+  config: ConnectionConfigOptionalDatabase,
+  sql: string,
+  ...args: Array<SQLValue>
+): Promise<T> => {
+  const rows = await Query<T>(config, sql, ...args);
+  if (rows.length !== 1) {
+    throw new SQLError("Expected exactly one row", sql);
+  }
+
+  return rows[0];
+};
+
+export const Query = async <T = Row>(
+  config: ConnectionConfigOptionalDatabase,
+  sql: string,
+  ...args: Array<SQLValue>
+): Promise<Array<T>> => {
+  const data = await fetchEndpoint("query/rows", config, sql, ...args);
+
+  if (data.results.length !== 1) {
+    throw new SQLError("Expected exactly one result set", sql);
+  }
+
+  return data.results[0].rows;
+};
+
+export const QueryNoDb = <T = Row>(
+  config: ConnectionConfigOptionalDatabase,
+  sql: string,
+  ...args: Array<SQLValue>
+): Promise<Array<T>> => Query({ ...config, database: undefined }, sql, ...args);
+
+export const QueryTuples = async <
+  T extends [...Array<SQLValue>] = Array<SQLValue>
+>(
+  config: ConnectionConfigOptionalDatabase,
+  sql: string,
+  ...args: Array<SQLValue>
+): Promise<Array<T>> => {
+  const data = await fetchEndpoint("query/tuples", config, sql, ...args);
+
+  if (data.results.length !== 1) {
+    throw new SQLError("Expected exactly one result set", sql);
+  }
+
+  return data.results[0].rows;
+};
+
+export const ExecNoDb = (
+  config: ConnectionConfigOptionalDatabase,
+  sql: string,
+  ...args: Array<SQLValue>
+): Promise<{ lastInsertId: number; rowsAffected: number }> =>
+  fetchEndpoint("exec", { ...config, database: undefined }, sql, ...args);
+
+export const Exec = (
+  config: ConnectionConfigOptionalDatabase,
+  sql: string,
+  ...args: Array<SQLValue>
+): Promise<{ lastInsertId: number; rowsAffected: number }> =>
+  fetchEndpoint("exec", config, sql, ...args);
+
+const fetchEndpoint = async (
+  endpoint: string,
+  config: ConnectionConfigOptionalDatabase,
+  sql: string,
+  ...args: Array<SQLValue>
+) => {
+  if (DEBUG) {
+    console.log("running query", sql, args);
+  }
+
+  try {
+    const response = await fetch(
+      `${rectifyHostAddress(config.host)}/api/v2/${endpoint}`,
+      {
+        method: "POST",
+        signal: config.ctx?.signal,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${btoa(`${config.user}:${config.password}`)}`,
+        },
+        body: JSON.stringify({ sql, args, database: config.database }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      // Don't pass HTTP status as code - let SQLError parse the error message
+      // for SQL error codes (e.g., "Error 1049: Unknown database")
+      throw new SQLError(
+        errorText || `HTTP ${response.status}: ${response.statusText}`,
+        sql
+      );
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new SQLError(data.error.message, sql, data.error.code);
+    }
+    return data;
+  } catch (error) {
+    // Re-throw AbortErrors as-is so SWR can handle them properly
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
+    }
+    // Re-throw SQLErrors as-is
+    if (error instanceof SQLError) {
+      throw error;
+    }
+    // Wrap other errors as SQLError
+    throw new SQLError(
+      error instanceof Error ? error.message : String(error),
+      sql
+    );
+  }
+};

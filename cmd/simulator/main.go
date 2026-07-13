@@ -2,9 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -26,15 +24,18 @@ func main() {
 	defer db.Close()
 
 	state := &gen.State{
-		Rand:                    rand.New(rand.NewSource(time.Now().UnixNano())),
-		SubscriberCount:         *subscriberCount,
-		EventProbability:        0.02,
-		CareCaseProbability:     0.01,
-		RetentionActionProb:     0.005,
+		Rand:                rand.New(rand.NewSource(time.Now().UnixNano())),
+		SubscriberCount:     *subscriberCount,
+		EventProbability:    0.02,
+		CareCaseProbability: 0.01,
+		RetentionActionProb: 0.005,
 	}
 
 	gen.InitReferenceData(state)
 	gen.InitSubscribers(state, *subscriberCount)
+
+	// Insert subscribers into database
+	insertSubscribers(db, state.Subscribers)
 
 	log.Printf("Simulator started with %d subscribers", *subscriberCount)
 
@@ -67,37 +68,107 @@ func main() {
 }
 
 func insertNetworkEvents(db *sql.DB, events []gen.NetworkEvent) {
-	data, _ := json.Marshal(events)
-	query := fmt.Sprintf("CALL process_network_events(%s)", string(data))
-	_, err := db.Exec(query)
-	if err != nil {
-		log.Printf("Error inserting network events: %v", err)
+	if len(events) == 0 {
+		return
+	}
+
+	query := `INSERT INTO network_experience_events
+		(subscriber_id, cell_site_id, market_id, region_name, technology_type, event_type, severity, duration_seconds, impacted_service, event_ts)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(6))`
+
+	for _, e := range events {
+		_, err := db.Exec(query,
+			e.SubscriberID, e.CellSiteID, e.MarketID, e.RegionName,
+			e.TechnologyType, e.EventType, e.Severity, e.DurationSeconds, e.ImpactedService)
+		if err != nil {
+			log.Printf("Error inserting network event: %v", err)
+			return
+		}
 	}
 }
 
 func insertUsageSummaries(db *sql.DB, summaries []gen.UsageSummary) {
-	data, _ := json.Marshal(summaries)
-	query := fmt.Sprintf("CALL process_usage_summary(%s)", string(data))
-	_, err := db.Exec(query)
-	if err != nil {
-		log.Printf("Error inserting usage summaries: %v", err)
+	if len(summaries) == 0 {
+		return
+	}
+
+	query := `INSERT INTO subscriber_usage_summary
+		(subscriber_id, cell_site_id, market_id, session_count, data_mb, voice_minutes, dropped_sessions, avg_session_latency_ms, qos_score, event_ts)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(6))`
+
+	for _, s := range summaries {
+		_, err := db.Exec(query,
+			s.SubscriberID, s.CellSiteID, s.MarketID, s.SessionCount, s.DataMB,
+			s.VoiceMinutes, s.DroppedSessions, s.AvgSessionLatencyMS, s.QoSScore)
+		if err != nil {
+			log.Printf("Error inserting usage summary: %v", err)
+			return
+		}
 	}
 }
 
 func insertCareCases(db *sql.DB, cases []gen.CareCase) {
-	data, _ := json.Marshal(cases)
-	query := fmt.Sprintf("CALL process_care_cases(%s)", string(data))
-	_, err := db.Exec(query)
-	if err != nil {
-		log.Printf("Error inserting care cases: %v", err)
+	if len(cases) == 0 {
+		return
+	}
+
+	query := `INSERT INTO care_cases
+		(subscriber_id, channel, issue_category, escalation_flag, related_service_issue_flag, opened_ts)
+		VALUES (?, ?, ?, ?, ?, NOW(6))`
+
+	for _, c := range cases {
+		_, err := db.Exec(query,
+			c.SubscriberID, c.Channel, c.IssueCategory, c.EscalationFlag, c.RelatedServiceIssueFlag)
+		if err != nil {
+			log.Printf("Error inserting care case: %v", err)
+			return
+		}
 	}
 }
 
 func insertRetentionActions(db *sql.DB, actions []gen.RetentionAction) {
-	data, _ := json.Marshal(actions)
-	query := fmt.Sprintf("CALL process_retention_actions(%s)", string(data))
-	_, err := db.Exec(query)
-	if err != nil {
-		log.Printf("Error inserting retention actions: %v", err)
+	if len(actions) == 0 {
+		return
 	}
+
+	query := `INSERT INTO retention_actions
+		(subscriber_id, action_type, channel, reason_code, accepted_flag, conversion_flag, revenue_impact, action_ts)
+		VALUES (?, ?, ?, ?, ?, ?, ?, NOW(6))`
+
+	for _, a := range actions {
+		_, err := db.Exec(query,
+			a.SubscriberID, a.ActionType, a.Channel, a.ReasonCode,
+			a.AcceptedFlag, a.ConversionFlag, a.RevenueImpact)
+		if err != nil {
+			log.Printf("Error inserting retention action: %v", err)
+			return
+		}
+	}
+}
+
+func insertSubscribers(db *sql.DB, subscribers []gen.Subscriber) {
+	log.Printf("Inserting %d subscribers into database...", len(subscribers))
+
+	query := `INSERT INTO subscriber_master
+		(subscriber_id, account_id, line_type, plan_type, home_market_id, monthly_revenue, device_model, churn_risk_band, last_experience_score)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+		churn_risk_band = VALUES(churn_risk_band),
+		last_experience_score = VALUES(last_experience_score)`
+
+	for i, s := range subscribers {
+		_, err := db.Exec(query,
+			s.ID, s.AccountID, s.LineType, s.PlanType, s.HomeMarketID,
+			s.MonthlyRevenue, s.DeviceModel, s.ChurnRiskBand, s.ExperienceScore)
+		if err != nil {
+			log.Printf("Error inserting subscriber %d: %v", s.ID, err)
+			return
+		}
+
+		if (i+1)%100 == 0 {
+			log.Printf("Inserted %d/%d subscribers", i+1, len(subscribers))
+		}
+	}
+
+	log.Printf("All %d subscribers inserted successfully", len(subscribers))
 }

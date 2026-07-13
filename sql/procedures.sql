@@ -1,7 +1,5 @@
 -- Stored procedures for Telco Subscriber Experience Command Center
--- Based on RTDM patterns
-
-DELIMITER //
+-- Helios-compatible (no DELIMITER needed)
 
 -- Process incoming network experience events
 CREATE OR REPLACE PROCEDURE process_network_events (
@@ -44,7 +42,7 @@ BEGIN
   FROM _batch b
   JOIN cell_sites cs ON b.cell_site_id = cs.cell_site_id
   JOIN market_reference m ON cs.market_id = m.market_id;
-END //
+END;
 
 -- Process incoming usage summary updates
 CREATE OR REPLACE PROCEDURE process_usage_summary (
@@ -85,7 +83,7 @@ BEGIN
     b.qos_score
   FROM _batch b
   JOIN cell_sites cs ON b.cell_site_id = cs.cell_site_id;
-END //
+END;
 
 -- Process care case creation
 CREATE OR REPLACE PROCEDURE process_care_cases (
@@ -119,7 +117,7 @@ BEGIN
     NULL as csat_score,
     b.related_service_issue_flag
   FROM _batch b;
-END //
+END;
 
 -- Process retention actions
 CREATE OR REPLACE PROCEDURE process_retention_actions (
@@ -154,7 +152,7 @@ BEGIN
     b.conversion_flag,
     b.revenue_impact
   FROM _batch b;
-END //
+END;
 
 -- Update churn risk scores (periodic batch job)
 CREATE OR REPLACE PROCEDURE update_churn_risk_scores() AS
@@ -226,7 +224,7 @@ BEGIN
   _updated_count = ROW_COUNT();
 
   ECHO SELECT _updated_count as subscribers_updated;
-END //
+END;
 
 -- Generate retention actions for at-risk subscribers (automated intervention trigger)
 CREATE OR REPLACE PROCEDURE trigger_retention_actions(
@@ -274,7 +272,7 @@ BEGIN
   _actions_created = ROW_COUNT();
 
   ECHO SELECT _actions_created as actions_created;
-END //
+END;
 
 -- Resolve network events (simulated resolution)
 CREATE OR REPLACE PROCEDURE resolve_network_events(
@@ -293,7 +291,7 @@ BEGIN
   _resolved_count = ROW_COUNT();
 
   ECHO SELECT _resolved_count as events_resolved;
-END //
+END;
 
 -- Close care cases (simulated resolution)
 CREATE OR REPLACE PROCEDURE close_care_cases(
@@ -327,6 +325,4 @@ BEGIN
   _closed_count = ROW_COUNT();
 
   ECHO SELECT _closed_count as cases_closed;
-END //
-
-DELIMITER ;
+END;

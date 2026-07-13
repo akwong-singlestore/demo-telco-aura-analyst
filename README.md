@@ -29,6 +29,16 @@ go mod download
 go run main.go -dsn "root:password@tcp(localhost:3306)/telco" -subscribers 1000 -tick 5s
 ```
 
+### Run Web UI
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Open http://localhost:3000 and connect to your SingleStore database.
+
 ## Architecture
 
 - **Schema**: 7 core tables + 5 analytical views
@@ -68,14 +78,14 @@ SELECT * FROM intervention_effectiveness ORDER BY conversion_rate DESC;
 
 ## Project Status
 
-**Phase**: MVP Backend Complete
+**Phase**: MVP Complete (Backend + Frontend)
 - ✅ Schema and stored procedures
 - ✅ Seed data generation
 - ✅ Event simulator with scenarios
-- ⏳ Web UI (needs implementation)
-- ⏳ Aura Analyst integration (schema ready, UI pending)
+- ✅ Web UI with Executive dashboard
+- ✅ Aura Analyst integration with telco-specific prompts
 
-See IMPLEMENTATION.md for detailed status and next steps.
+See SETUP.md for complete setup instructions.
 
 ## License
 

@@ -1,20 +1,16 @@
 package gen
 
-import (
-	"math/rand"
-)
-
 // InitSubscribers initializes the subscriber population
 func InitSubscribers(state *State, count int) {
 	state.Subscribers = make([]Subscriber, count)
 	offset := count * state.PartitionId
 
-	lineTypes := []string{"postpaid", "prepaid", "enterprise"}
+	_ = []string{"postpaid", "prepaid", "enterprise"} // lineTypes (kept for reference but not used)
 	deviceModels := []string{
 		"iPhone 14", "iPhone 13", "Samsung Galaxy S23",
 		"Google Pixel 7", "Samsung Galaxy A54",
 	}
-	churnBands := []string{"low", "medium", "high", "critical"}
+	_ = []string{"low", "medium", "high", "critical"} // churnBands (kept for reference but not used)
 
 	for i := 0; i < count; i++ {
 		subscriberID := int64(1000000 + offset + i)
@@ -38,16 +34,19 @@ func InitSubscribers(state *State, count int) {
 
 		// Determine line type
 		lineTypeRand := state.Rand.Float64()
-		var lineType string
+		var lineType, planType string
 		var monthlyRevenue float64
 		if lineTypeRand < 0.6 {
 			lineType = "postpaid"
+			planType = []string{"Unlimited Plus", "Premium 5G", "Standard Postpaid"}[state.Rand.Intn(3)]
 			monthlyRevenue = 45.0 + state.Rand.Float64()*155.0
 		} else if lineTypeRand < 0.9 {
 			lineType = "prepaid"
+			planType = []string{"Prepaid Basic", "Prepaid Data", "Pay As You Go"}[state.Rand.Intn(3)]
 			monthlyRevenue = 25.0 + state.Rand.Float64()*50.0
 		} else {
 			lineType = "enterprise"
+			planType = []string{"Business Unlimited", "Enterprise Premium", "Corporate Plan"}[state.Rand.Intn(3)]
 			monthlyRevenue = 65.0 + state.Rand.Float64()*135.0
 		}
 
@@ -68,8 +67,10 @@ func InitSubscribers(state *State, count int) {
 			ID:                 subscriberID,
 			AccountID:          subscriberID,
 			LineType:           lineType,
+			PlanType:           planType,
 			HomeMarketID:       market.ID,
 			HomeCellSiteID:     cellSiteID,
+			RegionName:         market.RegionName,
 			MonthlyRevenue:     monthlyRevenue,
 			ChurnRiskBand:      churnBand,
 			DeviceModel:        deviceModels[state.Rand.Intn(len(deviceModels))],

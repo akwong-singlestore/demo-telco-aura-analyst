@@ -1,12 +1,10 @@
 package gen
 
-import (
-	"math/rand"
-)
-
 type NetworkEvent struct {
 	SubscriberID     int64  `json:"subscriber_id"`
 	CellSiteID       int64  `json:"cell_site_id"`
+	MarketID         int64  `json:"market_id"`
+	RegionName       string `json:"region_name"`
 	TechnologyType   string `json:"technology_type"`
 	EventType        string `json:"event_type"`
 	Severity         string `json:"severity"`
@@ -17,18 +15,20 @@ type NetworkEvent struct {
 type UsageSummary struct {
 	SubscriberID        int64   `json:"subscriber_id"`
 	CellSiteID          int64   `json:"cell_site_id"`
+	MarketID            int64   `json:"market_id"`
 	SessionCount        int     `json:"session_count"`
 	DataMB              float64 `json:"data_mb"`
 	VoiceMinutes        float64 `json:"voice_minutes"`
 	DroppedSessions     int     `json:"dropped_sessions"`
-	AvgSessionLatencyMs int     `json:"avg_session_latency_ms"`
-	QosScore            float64 `json:"qos_score"`
+	AvgSessionLatencyMS int     `json:"avg_session_latency_ms"`
+	QoSScore            float64 `json:"qos_score"`
 }
 
 type CareCase struct {
 	SubscriberID             int64  `json:"subscriber_id"`
 	Channel                  string `json:"channel"`
 	IssueCategory            string `json:"issue_category"`
+	EscalationFlag           bool   `json:"escalation_flag"`
 	RelatedServiceIssueFlag  bool   `json:"related_service_issue_flag"`
 }
 
@@ -103,7 +103,7 @@ func GenerateEvents(state *State) ([]NetworkEvent, []UsageSummary, []CareCase, [
 
 func generateNetworkEvent(state *State, sub *Subscriber, isAffected bool) NetworkEvent {
 	eventTypes := []string{"high_latency", "packet_loss", "session_drop", "no_service", "slow_data"}
-	severities := []string{"minor", "major", "critical"}
+	_ = []string{"minor", "major", "critical"} // severities (kept for reference but not used)
 	impactedServices := []string{"data", "voice", "sms"}
 	technologies := []string{"4G", "5G"}
 
@@ -138,6 +138,8 @@ func generateNetworkEvent(state *State, sub *Subscriber, isAffected bool) Networ
 	return NetworkEvent{
 		SubscriberID:    sub.ID,
 		CellSiteID:      sub.HomeCellSiteID,
+		MarketID:        sub.HomeMarketID,
+		RegionName:      sub.RegionName,
 		TechnologyType:  technologies[state.Rand.Intn(len(technologies))],
 		EventType:       eventType,
 		Severity:        severity,
@@ -169,12 +171,13 @@ func generateUsageSummary(state *State, sub *Subscriber) UsageSummary {
 	return UsageSummary{
 		SubscriberID:        sub.ID,
 		CellSiteID:          sub.HomeCellSiteID,
+		MarketID:            sub.HomeMarketID,
 		SessionCount:        10 + state.Rand.Intn(50),
 		DataMB:              500.0 + state.Rand.Float64()*5000.0,
 		VoiceMinutes:        30.0 + state.Rand.Float64()*150.0,
 		DroppedSessions:     droppedSessions,
-		AvgSessionLatencyMs: latency,
-		QosScore:            baseQos + (state.Rand.Float64()*10.0 - 5.0), // +/- 5
+		AvgSessionLatencyMS: latency,
+		QoSScore:            baseQos + (state.Rand.Float64()*10.0 - 5.0), // +/- 5
 	}
 }
 
@@ -213,6 +216,7 @@ func generateCareCase(state *State, sub *Subscriber, isAffected bool) CareCase {
 		SubscriberID:            sub.ID,
 		Channel:                 channels[state.Rand.Intn(len(channels))],
 		IssueCategory:           issueCategory,
+		EscalationFlag:          state.Rand.Float64() < 0.1,
 		RelatedServiceIssueFlag: relatedToService,
 	}
 }

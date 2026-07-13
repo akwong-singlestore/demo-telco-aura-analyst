@@ -48,8 +48,10 @@ type Subscriber struct {
 	ID                 int64
 	AccountID          int64
 	LineType           string
+	PlanType           string
 	HomeMarketID       int64
 	HomeCellSiteID     int64
+	RegionName         string
 	MonthlyRevenue     float64
 	ChurnRiskBand      string
 	DeviceModel        string

@@ -1,0 +1,117 @@
+import {
+  Flex,
+  Grid,
+  GridItem,
+  Heading,
+  Image,
+  Link,
+  Stack,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
+  Text,
+  useColorModeValue,
+  useMediaQuery,
+} from "@chakra-ui/react";
+import * as React from "react";
+import { useNavigate } from "react-router-dom";
+
+import GraphicalBackground2 from "@/assets/graphical-background-2.svg";
+import SingleStoreLogoLight from "@/assets/singlestore-logo-light.svg";
+import SingleStoreLogoDark from "@/assets/singlestore-logo-dark-new.svg";
+import { DatabaseConfigFormManual } from "@/components/dataConfigForm/DatabaseConfigFormManual";
+import { NeedHelpModal } from "@/components/NeedHelpModal";
+import { useConnectionState } from "@/view/hooks/hooks";
+
+const ConnectSection: React.FC = () => {
+  const fontColor = useColorModeValue("#0C7BDC", "#2A9DF4");
+
+  return (
+    <Stack spacing={4}>
+      <Heading>
+        <Image
+          src={useColorModeValue(SingleStoreLogoDark, SingleStoreLogoLight)}
+          alt="SingleStore"
+          height="32px"
+          objectFit="contain"
+        />
+      </Heading>
+      <Heading size="lg">
+        <Text>Subscriber Experience Command Center</Text>
+      </Heading>
+      <Text fontSize="md" color="gray.600">
+        Real-time operational analytics for telecommunications service providers. Monitor subscriber health, network performance, and churn risk with{" "}
+        <Link
+          fontWeight="bold"
+          href="https://portal.singlestore.com"
+          isExternal
+        >
+          SingleStoreDB
+        </Link>
+        .
+      </Text>
+      <Tabs variant="unstyled">
+        <TabList>
+          <Tab
+            justifyContent="center"
+            _selected={{
+              color: fontColor,
+              borderBottom: `2px solid ${fontColor}`,
+            }}
+            fontWeight="bold"
+            gap={1}
+          >
+            Connect to SingleStoreDB
+          </Tab>
+        </TabList>
+        <TabPanels padding={0} margin={0}>
+          <TabPanel paddingLeft={0} paddingTop={5} margin={0}>
+            <DatabaseConfigFormManual showDatabase />
+            <br />
+            <NeedHelpModal />
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+    </Stack>
+  );
+};
+
+export const HomePage: React.FC = () => {
+  const { connected } = useConnectionState();
+  const navigate = useNavigate();
+  const [isSmallScreen] = useMediaQuery("(max-width: 640px)");
+
+  React.useEffect(() => {
+    if (connected) {
+      navigate("/dashboard");
+    }
+  }, [connected, navigate]);
+
+  return (
+    <Grid
+      templateColumns={isSmallScreen ? "repeat(1, 1fr)" : "repeat(2, 1fr)"}
+      width="100%"
+      height="100%"
+      justifyContent="center"
+      alignItems="center"
+    >
+      <GridItem padding="10% 10% 10% 20%">
+        <ConnectSection />
+      </GridItem>
+      <GridItem
+        backgroundImage={GraphicalBackground2}
+        justifyContent="center"
+        alignItems="center"
+        backgroundSize="170%"
+        height="100%"
+        width="100%"
+        minWidth="300px"
+        backgroundPosition="center"
+        backgroundRepeat="no-repeat"
+      >
+      </GridItem>
+    </Grid>
+  );
+};

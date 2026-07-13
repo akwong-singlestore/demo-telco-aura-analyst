@@ -1,5 +1,5 @@
 -- Seed data for Telco Subscriber Experience Command Center
--- Generates reference data and initial subscriber base
+-- Helios-compatible (no DELIMITER needed)
 
 -- Seed markets (major US metro areas)
 INSERT INTO market_reference (market_id, market_name, region_name, latitude, longitude, urban_rural_flag, population_density) VALUES
@@ -76,7 +76,6 @@ INSERT INTO enterprise_accounts (enterprise_account_id, account_name, sla_tier, 
 
 -- Seed base subscriber population
 -- Using a stored procedure pattern similar to RTDM
-DELIMITER //
 
 CREATE OR REPLACE PROCEDURE seed_subscribers(
   _count INT,
@@ -154,9 +153,7 @@ BEGIN
 
     i = i + 1;
   END LOOP;
-END //
-
-DELIMITER ;
+END;
 
 -- Generate 50,000 subscribers
 CALL seed_subscribers(50000, 1000000);
