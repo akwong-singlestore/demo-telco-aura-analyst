@@ -13,9 +13,9 @@ type customeIconProps = Omit<
 >;
 
 export const TwitterIconButton = (props: customeIconProps) => {
-  const url = `https://digital-marketing.labs.singlestore.com/`;
-  const text = `Exciting MarTech demo application from SingleStoreDB showcasing its unique capabilities! As a demo app, it gives you a taste of what's possible when using SingleStoreDB for your own projects. \
-	#SingleStoreDB #database #digitalmarketing #appdevelopment `;
+  const url = `https://akwong-singlestore.github.io/demo-telco-aura-analyst/`;
+  const text = `Real-time telco subscriber experience monitoring with AI-powered analytics using SingleStore! Track network degradation, churn risk, and care volume with millisecond-latency queries. \
+	#SingleStore #Telco #RealTimeAnalytics #AI #NetworkMonitoring `;
 
   return (
     <IconButton
@@ -31,7 +31,7 @@ export const TwitterIconButton = (props: customeIconProps) => {
 };
 
 export const LinkedinIconButton = (props: customeIconProps) => {
-  const url = "https://digital-marketing.labs.singlestore.com/";
+  const url = "https://akwong-singlestore.github.io/demo-telco-aura-analyst/";
 
   return (
     <IconButton
@@ -48,7 +48,7 @@ export const LinkedinIconButton = (props: customeIconProps) => {
 
 export const GithubIconButton = (props: customeIconProps) => {
   const url =
-    "https://github.com/singlestore-labs/demo-realtime-digital-marketing";
+    "https://github.com/akwong-singlestore/demo-telco-aura-analyst";
   const gitHubIconButton = useColorModeValue(
     <VscGithub size="1.2em" />,
     <VscGithubInverted size="1.2em" />

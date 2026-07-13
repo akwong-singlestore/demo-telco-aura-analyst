@@ -47,8 +47,8 @@ export const Footer = () => {
         alignItems="center"
       >
         <Text>
-          Real-Time Digital Marketing is a demo application running on{" "}
-          <Link href="https://singlestore.com"> SingleStoreDB</Link>
+          Telco Subscriber Experience with Aura Analyst is a demo application running on{" "}
+          <Link href="https://singlestore.com"> SingleStore</Link>
         </Text>
 
         <SocialMediaSection />
