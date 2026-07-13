@@ -149,20 +149,27 @@ func insertRetentionActions(db *sql.DB, actions []gen.RetentionAction) {
 func insertSubscribers(db *sql.DB, subscribers []gen.Subscriber) {
 	log.Printf("Inserting %d subscribers into database...", len(subscribers))
 
-	query := `INSERT INTO subscriber_master
+	// Use prepared statement to avoid "commands out of sync"
+	stmt, err := db.Prepare(`INSERT INTO subscriber_master
 		(subscriber_id, account_id, line_type, plan_type, home_market_id, monthly_revenue, device_model, churn_risk_band, last_experience_score)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
 		churn_risk_band = VALUES(churn_risk_band),
-		last_experience_score = VALUES(last_experience_score)`
+		last_experience_score = VALUES(last_experience_score)`)
+	if err != nil {
+		log.Printf("Error preparing statement: %v", err)
+		return
+	}
+	defer stmt.Close()
 
 	for i, s := range subscribers {
-		_, err := db.Exec(query,
+		_, err := stmt.Exec(
 			s.ID, s.AccountID, s.LineType, s.PlanType, s.HomeMarketID,
 			s.MonthlyRevenue, s.DeviceModel, s.ChurnRiskBand, s.ExperienceScore)
 		if err != nil {
 			log.Printf("Error inserting subscriber %d: %v", s.ID, err)
-			return
+			// Continue with other subscribers instead of returning
+			continue
 		}
 
 		if (i+1)%100 == 0 {
