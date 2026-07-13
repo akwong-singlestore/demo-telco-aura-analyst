@@ -36,10 +36,7 @@ export const DatabaseConfigForm = ({
     );
   }
 
-  let scaleFactor;
-  if (showScaleFactor) {
-    scaleFactor = <ScaleFactorSelector />;
-  }
+  // ScaleFactor not used in telco demo
 
   return (
     <Stack spacing={4}>

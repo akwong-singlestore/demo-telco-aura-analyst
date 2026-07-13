@@ -30,7 +30,7 @@ export const useSchemaObjects = (paused = false) => {
     {
       isPaused: () => paused,
       refreshInterval: (data) => {
-        const missingObjs = Object.values(data || []).some((x) => !x);
+        const missingObjs = Object.values(data || {}).some((x) => !x);
         return missingObjs ? 1000 : 0;
       },
       fallbackData: defaultSchemaObjects,
@@ -95,7 +95,7 @@ export const useTick = (
   tick: (ctx: AbortController) => Promise<unknown>,
   { name, enabled, intervalMS }: TickOptions
 ) => {
-  const setTickDurationMs = useSetRecoilState(tickDurationMs(name));
+  const setTickDurationMs = useSetRecoilState(tickDurationMs);
 
   React.useEffect(() => {
     if (!enabled) {
@@ -203,29 +203,7 @@ export const useResetSchema = ({
     before();
 
     // reset schema
-    await resetSchema(config, {
-      progress(title, status) {
-        const id = "reset-schema";
-        if (toast.isActive(id)) {
-          toast.update(id, {
-            title,
-            status,
-            duration: status === "success" ? 2000 : 7000,
-            isClosable: true,
-          });
-        } else {
-          toast({
-            id,
-            title,
-            status,
-            isClosable: true,
-            duration: status === "success" ? 2000 : 7000,
-          });
-        }
-      },
-      includeSeedData,
-      resetDataOnly,
-    });
+    await resetSchema(config);
 
     // TODO: re-enable this once scale factors don't TKO clusters
     // count number of partitions to set default scale factor

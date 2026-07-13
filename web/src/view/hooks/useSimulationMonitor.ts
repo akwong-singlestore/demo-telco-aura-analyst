@@ -3,14 +3,12 @@ import { useRecoilValue } from "recoil";
 
 import { connectionConfig } from "@/data/recoil";
 import { useConnectionState, useTick } from "@/view/hooks/hooks";
-import { useSession } from "@/view/hooks/useSession";
 
 const TICK_INTERVAL_MONITOR = 10 * 1000;
 
 export const useSimulationMonitor = (enabled: boolean) => {
   const config = useRecoilValue(connectionConfig);
   const { initialized } = useConnectionState();
-  const { session } = useSession();
 
   const monitorTick = React.useCallback(
     (ctx: AbortController) => {
@@ -22,7 +20,7 @@ export const useSimulationMonitor = (enabled: boolean) => {
 
   useTick(monitorTick, {
     name: "SimulatorMonitor",
-    enabled: initialized && enabled && session.isController,
+    enabled: initialized && enabled,
     intervalMS: TICK_INTERVAL_MONITOR,
   });
 };

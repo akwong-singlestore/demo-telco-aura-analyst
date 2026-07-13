@@ -37,17 +37,18 @@ export const DatabaseConfigFormManual = ({
 
   const connect = () => {
     setLoading(true);
+    let database = "telco";
+    if (localDatabase) {
+      database = localDatabase;
+    }
     const config = {
       host: localHost,
       password: localPassword,
       user: localUser,
+      database,
     };
     connectToDB(config).then((connected) => {
       setLoading(false);
-      let database = "martech";
-      if (localDatabase) {
-        database = localDatabase;
-      }
       if (connected === true) {
         setHost(localHost);
         setUser(localUser);
@@ -56,7 +57,7 @@ export const DatabaseConfigFormManual = ({
       } else {
         toast({
           title: "An error occured",
-          description: `${connected.message}`,
+          description: `Connection failed`,
           status: "error",
           duration: 3000,
           isClosable: true,
@@ -81,10 +82,7 @@ export const DatabaseConfigFormManual = ({
     );
   }
 
-  let scaleFactor;
-  if (showScaleFactor) {
-    scaleFactor = <ScaleFactorSelector />;
-  }
+  // ScaleFactor not used in telco demo
 
   let connectButtonContainer = <>Connect</>;
   if (loading) {
@@ -131,7 +129,6 @@ export const DatabaseConfigFormManual = ({
         />
       </SimpleGrid>
       {databaseInput}
-      {scaleFactor}
 
       <Tooltip
         shouldWrapChildren
