@@ -2,34 +2,63 @@
 
 Real-time subscriber experience monitoring and churn prevention for communications service providers. Built on SingleStore with Aura Analyst integration.
 
+**🔗 Live Demo:** https://akwong-singlestore.github.io/demo-telco-aura-analyst/
+
 ## Quick Start
 
 ### Prerequisites
-- SingleStore cluster (local or cloud)
-- Go 1.21+ (for simulator)
+- SingleStore workspace ([create one free](https://portal.singlestore.com))
 - MySQL client
+- Go 1.21+ (optional, for local simulator)
 
-### Setup Database
+### 1. Setup Database (Required)
 
-```bash
-# Create database
-mysql -u root -h <host> -p -e "CREATE DATABASE telco"
-
-# Load schema
-mysql -u root -h <host> -p telco < sql/schema.sql
-mysql -u root -h <host> -p telco < sql/procedures.sql
-mysql -u root -h <host> -p telco < sql/seed.sql
-```
-
-### Run Simulator
+**⚠️ Important:** You must create and populate the database before connecting the web UI.
 
 ```bash
-cd cmd/simulator
-go mod download
-go run main.go -dsn "root:password@tcp(localhost:3306)/telco" -subscribers 1000 -tick 5s
+# Connect to your SingleStore workspace
+mysql -u admin -h <your-workspace-host> -p
+
+# Create and populate the database
+CREATE DATABASE telco;
+USE telco;
+SOURCE sql/schema.sql;
+SOURCE sql/seed.sql;
+SOURCE sql/procedures.sql;
 ```
 
-### Run Web UI
+Or use the SingleStore Portal SQL Editor to run the contents of each file.
+
+### 2. Connect Web UI
+
+Visit https://akwong-singlestore.github.io/demo-telco-aura-analyst/ and enter your connection details:
+
+- **Host:** Your SingleStore workspace URL (e.g., `svc-xxxx.aws-virginia-1.svc.singlestore.com`)
+- **User:** `admin` (or your username)
+- **Password:** Your workspace password
+- **Database:** `telco`
+
+### 3. Generate Data (Optional)
+
+The seed data provides static subscribers. For live simulation:
+
+**Option A: S3 Pipeline (Recommended)**
+```bash
+# Generate Parquet files
+go run cmd/simulator-s3/main.go -iterations=10 -subscribers=1000
+
+# Upload to your S3 bucket
+aws s3 sync /tmp/telco-data/ s3://your-bucket/
+
+# Create pipelines (see sql/pipelines.sql)
+```
+
+**Option B: Direct Insert**
+```bash
+go run cmd/simulator/main.go -dsn "admin:password@tcp(your-host:3306)/telco"
+```
+
+### Local Development
 
 ```bash
 cd web
@@ -37,7 +66,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 and connect to your SingleStore database.
+Open http://localhost:5173 and connect to your database.
 
 ## Architecture
 

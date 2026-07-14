@@ -76,7 +76,29 @@ export class ErrorBoundary extends React.Component<Props, State> {
     const { error } = this.state;
     if (error) {
       let info;
-      if (error instanceof SQLError) {
+      const isDatabaseNotFound = error.message.includes("Unknown database");
+
+      if (isDatabaseNotFound) {
+        info = (
+          <>
+            <Text textAlign="center" maxW="600px" mx="auto">
+              The database hasn't been created yet. Please run the following commands in your SingleStore workspace:
+            </Text>
+            <CodeBlock>
+              {dedent`
+                CREATE DATABASE telco;
+                USE telco;
+                SOURCE schema.sql;
+                SOURCE seed.sql;
+                SOURCE procedures.sql;
+              `}
+            </CodeBlock>
+            <Text textAlign="center" fontSize="sm" color="gray.600">
+              See the README for complete setup instructions.
+            </Text>
+          </>
+        );
+      } else if (error instanceof SQLError) {
         info = (
           <>
             <Text textAlign="center" zIndex={10}>
@@ -94,7 +116,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               <WarningTwoIcon boxSize={20} color="#C53030" />
             </Center>
             <Heading size="xl" textAlign="center">
-              {error.message}
+              {isDatabaseNotFound ? "Database Setup Required" : error.message}
             </Heading>
             {info}
             <HStack justify="center" gap={4}>
