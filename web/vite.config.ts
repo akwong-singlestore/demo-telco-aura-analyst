@@ -78,8 +78,9 @@ function transformSQL() {
         inProcedure = true;
       } else if (inProcedure) {
         currentProc.push(line);
-        // End of procedure
-        if (/^END;?\s*$/i.test(line.trim())) {
+        // End of procedure - match END; or END but NOT "END LOOP" or "END IF" or "END CASE"
+        const trimmedLine = line.trim();
+        if (/^END;?\s*$/i.test(trimmedLine) && !/END\s+(LOOP|IF|CASE|WHILE)/i.test(trimmedLine)) {
           const procText = currentProc.join('\n').trim();
           if (procText) {
             procedures.push(parseStatement(procText));
