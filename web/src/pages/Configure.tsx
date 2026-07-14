@@ -76,7 +76,16 @@ export const Configure: React.FC = () => {
   };
 
   const handleResetSchema = async () => {
-    if (!window.confirm("This will drop and recreate all tables, views, and procedures. Continue?")) {
+    const hasMissingObjects = schemaStatus && Object.values(schemaStatus).some(exists => !exists);
+    const hasExistingObjects = schemaStatus && Object.values(schemaStatus).some(exists => exists);
+
+    let confirmMessage = "This will create the telco database with all tables, views, and stored procedures. Continue?";
+
+    if (hasExistingObjects) {
+      confirmMessage = "⚠️ This will DROP all existing tables, views, and procedures, then recreate everything from scratch. All data will be lost. Continue?";
+    }
+
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
@@ -84,15 +93,15 @@ export const Configure: React.FC = () => {
     try {
       await resetSchema(config);
       toast({
-        title: "Schema reset successful",
-        description: "Database has been created and populated with seed data",
+        title: "Database setup successful",
+        description: "Database has been created and populated with schema, seed data, and procedures",
         status: "success",
         duration: 5000,
       });
       await checkSchema();
     } catch (error) {
       toast({
-        title: "Error resetting schema",
+        title: "Error setting up database",
         description: error instanceof Error ? error.message : "Unknown error",
         status: "error",
         duration: 5000,
@@ -206,6 +215,13 @@ export const Configure: React.FC = () => {
             {schemaStatus && Object.keys(schemaStatus).length > 0 && (
               <Box>
                 <Text fontWeight="medium" mb={2}>Schema Status:</Text>
+                {Object.values(schemaStatus).some(exists => !exists) && (
+                  <Alert status="warning" mb={3} fontSize="sm">
+                    <AlertIcon />
+                    Some objects are missing. Click "Setup Database" to create them.
+                    ⚠️ This will drop and recreate ALL objects.
+                  </Alert>
+                )}
                 <Stack spacing={2}>
                   {Object.entries(schemaStatus).map(([name, exists]) => (
                     <HStack key={name}>
