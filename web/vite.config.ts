@@ -117,51 +117,7 @@ function transformSQL() {
             return render(parseStatements(src));
 
           case "seed.sql":
-            // Seed.sql contains both INSERT statements and a procedure
-            // Split carefully to get each part
-            const procStart = src.indexOf('CREATE OR REPLACE PROCEDURE');
-            if (procStart === -1) {
-              return render(parseStatements(src));
-            }
-
-            // Find the end of the procedure (standalone END; after the procedure starts)
-            let procEnd = -1;
-            const lines = src.substring(procStart).split('\n');
-            let depth = 0;
-            let currentPos = procStart;
-
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i].trim();
-
-              // Track BEGIN/END depth
-              if (/\bBEGIN\b/i.test(line)) depth++;
-              if (/^END\s+(LOOP|IF|CASE|WHILE)/i.test(line)) {
-                // Control structure end, not procedure end
-              } else if (/^END;?\s*$/i.test(line) && depth > 0) {
-                depth--;
-                if (depth === 0) {
-                  // This is the procedure-ending END
-                  procEnd = currentPos + lines.slice(0, i + 1).join('\n').length;
-                  break;
-                }
-              }
-              currentPos += lines[i].length + 1; // +1 for newline
-            }
-
-            if (procEnd === -1) {
-              // Couldn't find procedure end, just parse normally
-              return render(parseStatements(src));
-            }
-
-            const beforeProc = src.substring(0, procStart);
-            const procText = src.substring(procStart, procEnd);
-            const afterProc = src.substring(procEnd);
-
-            const beforeStatements = beforeProc ? parseStatements(beforeProc) : [];
-            const procedureStatements = parseProcedures(procText);
-            const afterStatements = afterProc ? parseStatements(afterProc) : [];
-
-            return render([...beforeStatements, ...procedureStatements, ...afterStatements]);
+            return render(parseStatements(src));
 
           case "pipelines.sql":
             return render(parseStatements(src));

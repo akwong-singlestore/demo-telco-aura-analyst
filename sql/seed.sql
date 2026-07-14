@@ -74,89 +74,11 @@ INSERT INTO enterprise_accounts (enterprise_account_id, account_name, sla_tier, 
 (1003, 'Manufacturing Corp', 'bronze', 150, 99.0, 5, 85),
 (1004, 'Education District', 'silver', 80, 99.5, 2, 65);
 
--- Seed base subscriber population
--- Using a stored procedure pattern similar to RTDM
-
-CREATE OR REPLACE PROCEDURE seed_subscribers(
-  _count INT,
-  _start_id BIGINT
-) AS
-DECLARE
-  i INT = 0;
-  subscriber_id BIGINT;
-  line_type_rand DOUBLE;
-  market_id_rand INT;
-  enterprise_flag DOUBLE;
-BEGIN
-  WHILE i < _count LOOP
-    subscriber_id = _start_id + i;
-    line_type_rand = RAND();
-    market_id_rand = 1 + FLOOR(RAND() * 15); -- markets 1-15 (urban)
-    enterprise_flag = RAND();
-
-    INSERT INTO subscriber_master (
-      subscriber_id,
-      account_id,
-      line_type,
-      tenure_days,
-      plan_type,
-      monthly_revenue,
-      device_model,
-      device_os,
-      home_market_id,
-      enterprise_account_id,
-      churn_risk_band
-    ) VALUES (
-      subscriber_id,
-      subscriber_id, -- 1:1 for simplicity
-      CASE
-        WHEN line_type_rand < 0.6 THEN 'postpaid'
-        WHEN line_type_rand < 0.9 THEN 'prepaid'
-        ELSE 'enterprise'
-      END,
-      FLOOR(RAND() * 3650), -- 0-10 years tenure
-      CASE
-        WHEN RAND() < 0.3 THEN 'Unlimited Premium'
-        WHEN RAND() < 0.6 THEN 'Unlimited Plus'
-        WHEN RAND() < 0.8 THEN 'Unlimited Basic'
-        ELSE 'Limited 10GB'
-      END,
-      CASE
-        WHEN line_type_rand < 0.6 THEN 45.00 + (RAND() * 155.00) -- postpaid: $45-200
-        WHEN line_type_rand < 0.9 THEN 25.00 + (RAND() * 50.00)  -- prepaid: $25-75
-        ELSE 65.00 + (RAND() * 135.00) -- enterprise: $65-200
-      END,
-      CASE FLOOR(RAND() * 5)
-        WHEN 0 THEN 'iPhone 14'
-        WHEN 1 THEN 'iPhone 13'
-        WHEN 2 THEN 'Samsung Galaxy S23'
-        WHEN 3 THEN 'Google Pixel 7'
-        ELSE 'Samsung Galaxy A54'
-      END,
-      CASE FLOOR(RAND() * 2)
-        WHEN 0 THEN 'iOS'
-        ELSE 'Android'
-      END,
-      market_id_rand,
-      CASE
-        WHEN enterprise_flag < 0.15 AND line_type_rand >= 0.9
-        THEN 1000 + FLOOR(RAND() * 5) -- assign to enterprise account
-        ELSE NULL
-      END,
-      CASE
-        WHEN RAND() < 0.65 THEN 'low'
-        WHEN RAND() < 0.90 THEN 'medium'
-        WHEN RAND() < 0.97 THEN 'high'
-        ELSE 'critical'
-      END
-    );
-
     i = i + 1;
   END LOOP;
 END;
 
 -- Generate 50,000 subscribers
-CALL seed_subscribers(50000, 1000000);
 
 -- Add some initial usage summary data (last 7 days)
 INSERT INTO subscriber_usage_summary (
