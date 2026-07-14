@@ -25,8 +25,10 @@ import {
   Td,
   Badge,
   Spinner,
+  IconButton,
+  Collapse,
 } from "@chakra-ui/react";
-import { MdPeople, MdWarning, MdHeadset, MdTrendingUp } from "react-icons/md";
+import { MdPeople, MdWarning, MdHeadset, MdTrendingUp, MdFilterList, MdClose, MdChat } from "react-icons/md";
 import * as React from "react";
 import { useSetRecoilState } from "recoil";
 import Plotly from "plotly.js-dist-min";
@@ -84,68 +86,12 @@ const KPICard: React.FC<{
   );
 };
 
-const AuraSidebar: React.FC = () => {
+export const ExecutiveDashboard: React.FC = () => {
+  const [showFilters, setShowFilters] = React.useState(false);
+  const [showAura, setShowAura] = React.useState(false);
   const setPendingQuestion = useSetRecoilState(analystPendingQuestion);
   const setChatOpen = useSetRecoilState(analystChatOpen);
-  const bgColor = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.600");
 
-  const askQuestion = (question: string) => {
-    setPendingQuestion(question);
-    setChatOpen(true);
-  };
-
-  const questions = [
-    "What's driving the spike in impacted subscribers?",
-    "Which markets have the highest churn risk right now?",
-    "How is care volume trending vs. last week?",
-  ];
-
-  return (
-    <VStack
-      w="320px"
-      h="100%"
-      bg={bgColor}
-      borderLeft="1px"
-      borderColor={borderColor}
-      p={4}
-      spacing={4}
-      align="stretch"
-    >
-      <Flex align="center" gap={2}>
-        <Icon as={MdTrendingUp} color="blue.500" />
-        <Heading size="sm">Aura Analyst</Heading>
-        <Text fontSize="xs" color="blue.500" fontWeight="bold">
-          BETA
-        </Text>
-      </Flex>
-
-      <Text fontSize="sm" fontWeight="medium">
-        Ask about this view
-      </Text>
-
-      <VStack spacing={2} align="stretch">
-        {questions.map((q, idx) => (
-          <Button
-            key={idx}
-            size="sm"
-            variant="outline"
-            textAlign="left"
-            justifyContent="flex-start"
-            whiteSpace="normal"
-            height="auto"
-            py={3}
-            onClick={() => askQuestion(q)}
-          >
-            {q}
-          </Button>
-        ))}
-      </VStack>
-    </VStack>
-  );
-};
-
-export const ExecutiveDashboard: React.FC = () => {
   const kpisRes = useExecutiveKPIs();
   const marketsRes = useMarketHealth();
   const atRiskRes = useAtRiskSubscribers();
@@ -182,54 +128,96 @@ export const ExecutiveDashboard: React.FC = () => {
   };
 
   return (
-    <Flex h="calc(100vh - 60px)" bg={bgColor}>
+    <Flex h="calc(100vh - 60px)" bg={bgColor} position="relative">
+      {/* Floating Filter Toggle Button */}
+      {!showFilters && (
+        <IconButton
+          aria-label="Show filters"
+          icon={<MdFilterList />}
+          position="absolute"
+          left={4}
+          top={4}
+          zIndex={10}
+          size="sm"
+          colorScheme="blue"
+          onClick={() => setShowFilters(true)}
+        />
+      )}
+
+      {/* Floating Aura Toggle Button */}
+      {!showAura && (
+        <IconButton
+          aria-label="Show Aura Analyst"
+          icon={<MdChat />}
+          position="absolute"
+          right={4}
+          top={4}
+          zIndex={10}
+          size="sm"
+          colorScheme="blue"
+          onClick={() => setShowAura(true)}
+        />
+      )}
+
       {/* Left Sidebar - Filters */}
-      <VStack
-        w="220px"
-        bg={cardBg}
-        borderRight="1px"
-        borderColor={borderColor}
-        p={4}
-        spacing={4}
-        align="stretch"
-      >
-        <Flex justify="space-between" align="center">
-          <Heading size="sm">Filters</Heading>
-          <Button size="xs" variant="ghost" colorScheme="blue">
-            Reset
-          </Button>
-        </Flex>
+      <Collapse in={showFilters} animateOpacity>
+        <VStack
+          w="220px"
+          h="100%"
+          bg={cardBg}
+          borderRight="1px"
+          borderColor={borderColor}
+          p={4}
+          spacing={4}
+          align="stretch"
+        >
+          <Flex justify="space-between" align="center">
+            <Heading size="sm">Filters</Heading>
+            <HStack spacing={1}>
+              <Button size="xs" variant="ghost" colorScheme="blue">
+                Reset
+              </Button>
+              <IconButton
+                aria-label="Close filters"
+                icon={<MdClose />}
+                size="xs"
+                variant="ghost"
+                onClick={() => setShowFilters(false)}
+              />
+            </HStack>
+          </Flex>
 
-        <Box>
-          <Text fontSize="sm" fontWeight="medium" mb={2}>Region</Text>
-          <Select size="sm" placeholder="All Regions" />
-        </Box>
+          <Box>
+            <Text fontSize="sm" fontWeight="medium" mb={2}>Region</Text>
+            <Select size="sm" placeholder="All Regions" />
+          </Box>
 
-        <Box>
-          <Text fontSize="sm" fontWeight="medium" mb={2}>Market</Text>
-          <Select size="sm" placeholder="All Markets" />
-        </Box>
+          <Box>
+            <Text fontSize="sm" fontWeight="medium" mb={2}>Market</Text>
+            <Select size="sm" placeholder="All Markets" />
+          </Box>
 
-        <Box>
-          <Text fontSize="sm" fontWeight="medium" mb={2}>Line Type</Text>
-          <Select size="sm" placeholder="Postpaid, Prepaid" />
-        </Box>
+          <Box>
+            <Text fontSize="sm" fontWeight="medium" mb={2}>Line Type</Text>
+            <Select size="sm" placeholder="Postpaid, Prepaid" />
+          </Box>
 
-        <Box>
-          <Text fontSize="sm" fontWeight="medium" mb={2}>Technology</Text>
-          <Select size="sm" placeholder="5G, 4G LTE" />
-        </Box>
+          <Box>
+            <Text fontSize="sm" fontWeight="medium" mb={2}>Technology</Text>
+            <Select size="sm" placeholder="5G, 4G LTE" />
+          </Box>
 
-        <Box>
-          <Text fontSize="sm" fontWeight="medium" mb={2}>Time Window</Text>
-          <Select size="sm" defaultValue="2h">
-            <option value="1h">Last 1 hour</option>
-            <option value="2h">Last 2 hours</option>
-            <option value="24h">Last 24 hours</option>
-            <option value="7d">Last 7 days</option>
-          </Select>
-        </Box>
-      </VStack>
+          <Box>
+            <Text fontSize="sm" fontWeight="medium" mb={2}>Time Window</Text>
+            <Select size="sm" defaultValue="2h">
+              <option value="1h">Last 1 hour</option>
+              <option value="2h">Last 2 hours</option>
+              <option value="24h">Last 24 hours</option>
+              <option value="7d">Last 7 days</option>
+            </Select>
+          </Box>
+        </VStack>
+      </Collapse>
 
       {/* Main Content */}
       <Flex flex={1} direction="column" overflow="auto">
@@ -444,7 +432,62 @@ export const ExecutiveDashboard: React.FC = () => {
       </Flex>
 
       {/* Right Sidebar - Aura */}
-      <AuraSidebar />
+      <Collapse in={showAura} animateOpacity>
+        <VStack
+          w="320px"
+          h="100%"
+          bg={cardBg}
+          borderLeft="1px"
+          borderColor={borderColor}
+          p={4}
+          spacing={4}
+          align="stretch"
+        >
+          <Flex justify="space-between" align="center">
+            <Flex align="center" gap={2}>
+              <Icon as={MdTrendingUp} color="blue.500" />
+              <Heading size="sm">Aura Analyst</Heading>
+              <Text fontSize="xs" color="blue.500" fontWeight="bold">
+                BETA
+              </Text>
+            </Flex>
+            <IconButton
+              aria-label="Close Aura Analyst"
+              icon={<MdClose />}
+              size="xs"
+              variant="ghost"
+              onClick={() => setShowAura(false)}
+            />
+          </Flex>
+
+          <Text fontSize="sm" fontWeight="medium">
+            Ask about this view
+          </Text>
+
+          <VStack spacing={2} align="stretch">
+            {["What's driving the spike in impacted subscribers?",
+              "Which markets have the highest churn risk right now?",
+              "How is care volume trending vs. last week?"].map((q, idx) => (
+              <Button
+                key={idx}
+                size="sm"
+                variant="outline"
+                textAlign="left"
+                justifyContent="flex-start"
+                whiteSpace="normal"
+                height="auto"
+                py={3}
+                onClick={() => {
+                  setPendingQuestion(q);
+                  setChatOpen(true);
+                }}
+              >
+                {q}
+              </Button>
+            ))}
+          </VStack>
+        </VStack>
+      </Collapse>
     </Flex>
   );
 };
