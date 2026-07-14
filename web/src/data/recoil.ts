@@ -211,3 +211,9 @@ export const tickDurationMs = atom<number | undefined>({
   key: "tickDurationMs",
   default: undefined,
 });
+
+export const timeWindow = atom<string>({
+  key: "timeWindow",
+  default: "2h",
+  effects: [localStorageEffect()],
+});

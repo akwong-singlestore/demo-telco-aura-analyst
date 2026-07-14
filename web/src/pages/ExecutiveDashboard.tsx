@@ -30,7 +30,7 @@ import {
 } from "@chakra-ui/react";
 import { MdPeople, MdWarning, MdHeadset, MdTrendingUp, MdFilterList, MdClose, MdChat } from "react-icons/md";
 import * as React from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetRecoilState, useRecoilState } from "recoil";
 import Plotly from "plotly.js-dist-min";
 import createPlotlyComponent from "react-plotly.js/factory";
 import {
@@ -40,7 +40,7 @@ import {
   useInterventionPerformance,
   useChurnRiskTrend
 } from "@/data/queries";
-import { analystPendingQuestion, analystChatOpen } from "@/data/recoil";
+import { analystPendingQuestion, analystChatOpen, timeWindow } from "@/data/recoil";
 
 const Plot = createPlotlyComponent(Plotly);
 
@@ -91,6 +91,7 @@ export const ExecutiveDashboard: React.FC = () => {
   const [showAura, setShowAura] = React.useState(false);
   const setPendingQuestion = useSetRecoilState(analystPendingQuestion);
   const setChatOpen = useSetRecoilState(analystChatOpen);
+  const [selectedTimeWindow, setSelectedTimeWindow] = useRecoilState(timeWindow);
 
   const kpisRes = useExecutiveKPIs();
   const marketsRes = useMarketHealth();
@@ -209,7 +210,11 @@ export const ExecutiveDashboard: React.FC = () => {
 
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={2}>Time Window</Text>
-            <Select size="sm" defaultValue="2h">
+            <Select
+              size="sm"
+              value={selectedTimeWindow}
+              onChange={(e) => setSelectedTimeWindow(e.target.value)}
+            >
               <option value="1h">Last 1 hour</option>
               <option value="2h">Last 2 hours</option>
               <option value="24h">Last 24 hours</option>

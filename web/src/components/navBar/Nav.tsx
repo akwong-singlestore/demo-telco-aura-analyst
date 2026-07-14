@@ -26,6 +26,8 @@ import {
 import { MdAccessTime } from "react-icons/md";
 import * as React from "react";
 import { Link as RouterLink, useLocation } from "react-router-dom";
+import { useRecoilState } from "recoil";
+import { timeWindow } from "@/data/recoil";
 
 import SingleStoreLogoLight from "@/assets/singlestore-logo-light.svg";
 import SingleStoreLogoDark from "@/assets/singlestore-logo-dark-new.svg";
@@ -35,6 +37,7 @@ export const Nav: React.FC = () => {
   const location = useLocation();
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
+  const [selectedTimeWindow, setSelectedTimeWindow] = useRecoilState(timeWindow);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -88,7 +91,8 @@ export const Nav: React.FC = () => {
             <Select
               size="sm"
               variant="outline"
-              defaultValue="2h"
+              value={selectedTimeWindow}
+              onChange={(e) => setSelectedTimeWindow(e.target.value)}
               width="140px"
               icon={<ChevronDownIcon />}
             >

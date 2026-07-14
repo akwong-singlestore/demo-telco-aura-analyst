@@ -1,7 +1,18 @@
 import useSWR from "swr";
 import { useRecoilValue } from "recoil";
-import { connectionConfig } from "./recoil";
+import { connectionConfig, timeWindow } from "./recoil";
 import { Query, QueryNoDb, ConnectionConfig, Row } from "./client";
+
+// Helper to convert time window string to SQL INTERVAL
+const timeWindowToInterval = (window: string): string => {
+  switch (window) {
+    case "1h": return "1 HOUR";
+    case "2h": return "2 HOUR";
+    case "24h": return "24 HOUR";
+    case "7d": return "7 DAY";
+    default: return "2 HOUR";
+  }
+};
 
 // Market health and degradation
 export interface Market {
@@ -41,7 +52,8 @@ export interface ExecutiveKPIs {
   conversion_rate: number;
 }
 
-export const getExecutiveKPIs = async (config: ConnectionConfig): Promise<ExecutiveKPIs> => {
+export const getExecutiveKPIs = async (config: ConnectionConfig, window: string): Promise<ExecutiveKPIs> => {
+  const interval = timeWindowToInterval(window);
   const result = await Query<ExecutiveKPIs>(
     config,
     `SELECT
@@ -49,9 +61,9 @@ export const getExecutiveKPIs = async (config: ConnectionConfig): Promise<Execut
       (SELECT COUNT(*) FROM subscriber_master WHERE churn_risk_band = 'high') as high_risk_subscribers,
       (SELECT COUNT(*) FROM subscriber_master WHERE churn_risk_band = 'critical') as critical_risk_subscribers,
       (SELECT AVG(experience_score) FROM subscriber_experience_scores) as avg_experience_score,
-      (SELECT COUNT(*) FROM care_cases WHERE opened_ts > NOW(6) - INTERVAL 24 HOUR) as care_cases_24h,
+      (SELECT COUNT(*) FROM care_cases WHERE opened_ts > NOW(6) - INTERVAL ${interval}) as care_cases_24h,
       (SELECT COUNT(*) FROM care_cases WHERE closed_ts IS NULL) as open_care_cases,
-      (SELECT COUNT(*) FROM retention_actions WHERE action_ts > NOW(6) - INTERVAL 24 HOUR) as retention_actions_24h,
+      (SELECT COUNT(*) FROM retention_actions WHERE action_ts > NOW(6) - INTERVAL ${interval}) as retention_actions_24h,
       (SELECT AVG(conversion_rate) FROM intervention_effectiveness) as conversion_rate`
   );
   return result[0];
@@ -59,7 +71,8 @@ export const getExecutiveKPIs = async (config: ConnectionConfig): Promise<Execut
 
 export const useExecutiveKPIs = () => {
   const config = useRecoilValue(connectionConfig);
-  return useSWR(["executive_kpis", config], () => getExecutiveKPIs(config), {
+  const window = useRecoilValue(timeWindow);
+  return useSWR(["executive_kpis", config, window], () => getExecutiveKPIs(config, window), {
     refreshInterval: 10000,
   });
 };
@@ -178,11 +191,12 @@ export interface NetworkEvent {
   resolved_flag: boolean;
 }
 
-export const getRecentNetworkEvents = async (config: ConnectionConfig, limit: number = 100): Promise<NetworkEvent[]> => {
+export const getRecentNetworkEvents = async (config: ConnectionConfig, window: string, limit: number = 100): Promise<NetworkEvent[]> => {
+  const interval = timeWindowToInterval(window);
   return await Query<NetworkEvent>(
     config,
     `SELECT * FROM network_experience_events
-     WHERE event_ts > NOW(6) - INTERVAL 1 HOUR
+     WHERE event_ts > NOW(6) - INTERVAL ${interval}
      ORDER BY event_ts DESC
      LIMIT ?`,
     limit
@@ -191,7 +205,8 @@ export const getRecentNetworkEvents = async (config: ConnectionConfig, limit: nu
 
 export const useRecentNetworkEvents = (limit: number = 100) => {
   const config = useRecoilValue(connectionConfig);
-  return useSWR(["recent_network_events", config, limit], () => getRecentNetworkEvents(config, limit), {
+  const window = useRecoilValue(timeWindow);
+  return useSWR(["recent_network_events", config, window, limit], () => getRecentNetworkEvents(config, window, limit), {
     refreshInterval: 5000,
   });
 };
@@ -205,7 +220,8 @@ export interface CareVolumeByIssue {
   avg_csat_score: number;
 }
 
-export const getCareVolumeByIssue = async (config: ConnectionConfig): Promise<CareVolumeByIssue[]> => {
+export const getCareVolumeByIssue = async (config: ConnectionConfig, window: string): Promise<CareVolumeByIssue[]> => {
+  const interval = timeWindowToInterval(window);
   return await Query<CareVolumeByIssue>(
     config,
     `SELECT
@@ -215,7 +231,7 @@ export const getCareVolumeByIssue = async (config: ConnectionConfig): Promise<Ca
       SUM(CASE WHEN escalation_flag THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as escalation_rate,
       AVG(csat_score) as avg_csat_score
      FROM care_cases
-     WHERE opened_ts > NOW(6) - INTERVAL 24 HOUR
+     WHERE opened_ts > NOW(6) - INTERVAL ${interval}
      GROUP BY issue_category
      ORDER BY case_count DESC
      LIMIT 10`
@@ -224,7 +240,8 @@ export const getCareVolumeByIssue = async (config: ConnectionConfig): Promise<Ca
 
 export const useCareVolumeByIssue = () => {
   const config = useRecoilValue(connectionConfig);
-  return useSWR(["care_volume_by_issue", config], () => getCareVolumeByIssue(config), {
+  const window = useRecoilValue(timeWindow);
+  return useSWR(["care_volume_by_issue", config, window], () => getCareVolumeByIssue(config, window), {
     refreshInterval: 15000,
   });
 };
