@@ -39,13 +39,53 @@ function transformSQL() {
       .filter((s) => !!s.trim())
       .map(parseStatement);
 
-  const parseProcedures = (raw: string) =>
-    raw
-      .replace(/DELIMITER (\/\/|;)/g, "")
-      .split(/(?<=END \/\/)/)
-      .filter((s) => !!s.trim())
-      .map((s) => s.replace("END //", "END"))
-      .map(parseStatement);
+  const parseProcedures = (raw: string) => {
+    // Handle both DELIMITER // format and Helios-compatible format (no DELIMITER)
+    let cleaned = raw.replace(/DELIMITER (\/\/|;)/g, "").trim();
+
+    // Try splitting on END // first (traditional format)
+    if (cleaned.includes("END //")) {
+      return cleaned
+        .split(/(?<=END \/\/)/)
+        .filter((s) => !!s.trim())
+        .map((s) => s.replace("END //", "END"))
+        .map(parseStatement);
+    }
+
+    // For Helios format: split on CREATE OR REPLACE PROCEDURE
+    // Each procedure ends with END; so we need to capture everything between procedure starts
+    const procedures = [];
+    const lines = cleaned.split('\n');
+    let currentProc = [];
+    let inProcedure = false;
+
+    for (const line of lines) {
+      // Start of a new procedure
+      if (/CREATE\s+(OR\s+REPLACE\s+)?PROCEDURE/i.test(line)) {
+        if (currentProc.length > 0) {
+          // Save previous procedure
+          procedures.push(parseStatement(currentProc.join('\n')));
+        }
+        currentProc = [line];
+        inProcedure = true;
+      } else if (inProcedure) {
+        currentProc.push(line);
+        // End of procedure
+        if (/^END;?\s*$/i.test(line.trim())) {
+          procedures.push(parseStatement(currentProc.join('\n')));
+          currentProc = [];
+          inProcedure = false;
+        }
+      }
+    }
+
+    // Don't forget the last procedure
+    if (currentProc.length > 0) {
+      procedures.push(parseStatement(currentProc.join('\n')));
+    }
+
+    return procedures;
+  };
 
   const render = (data) => ({
     code: `export default ${JSON.stringify(data)};`,
