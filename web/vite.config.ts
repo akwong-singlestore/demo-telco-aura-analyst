@@ -116,7 +116,11 @@ function transformSQL() {
             return render(parseStatements(src));
 
           case "seed.sql":
-            return render(parseStatements(src));
+            // Seed.sql contains both INSERT statements and a procedure
+            // Parse both types and combine them
+            const statements = parseStatements(src.substring(0, src.indexOf('CREATE OR REPLACE PROCEDURE')));
+            const procedures = parseProcedures(src);
+            return render([...statements, ...procedures]);
 
           case "pipelines.sql":
             return render(parseStatements(src));
