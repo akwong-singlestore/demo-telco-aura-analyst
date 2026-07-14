@@ -74,12 +74,6 @@ INSERT INTO enterprise_accounts (enterprise_account_id, account_name, sla_tier, 
 (1003, 'Manufacturing Corp', 'bronze', 150, 99.0, 5, 85),
 (1004, 'Education District', 'silver', 80, 99.5, 2, 65);
 
-    i = i + 1;
-  END LOOP;
-END;
-
--- Generate 50,000 subscribers
-
 -- Add some initial usage summary data (last 7 days)
 INSERT INTO subscriber_usage_summary (
   subscriber_id,
