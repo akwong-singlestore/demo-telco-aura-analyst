@@ -6,6 +6,8 @@ CREATE OR REPLACE PROCEDURE process_network_events (
   _batch QUERY(
     subscriber_id BIGINT NOT NULL,
     cell_site_id BIGINT NOT NULL,
+    market_id BIGINT NOT NULL,
+    region_name TEXT NOT NULL,
     technology_type TEXT NOT NULL,
     event_type TEXT NOT NULL,
     severity TEXT NOT NULL,
@@ -31,17 +33,15 @@ BEGIN
     NOW(6) as event_ts,
     b.subscriber_id,
     b.cell_site_id,
-    cs.market_id,
-    m.region_name,
+    b.market_id,
+    b.region_name,
     b.technology_type,
     b.event_type,
     b.severity,
     b.duration_seconds,
     b.impacted_service,
     FALSE as resolved_flag
-  FROM _batch b
-  JOIN cell_sites cs ON b.cell_site_id = cs.cell_site_id
-  JOIN market_reference m ON cs.market_id = m.market_id;
+  FROM _batch b;
 END;
 
 -- Process incoming usage summary updates
@@ -49,6 +49,7 @@ CREATE OR REPLACE PROCEDURE process_usage_summary (
   _batch QUERY(
     subscriber_id BIGINT NOT NULL,
     cell_site_id BIGINT NOT NULL,
+    market_id BIGINT NOT NULL,
     session_count INT NOT NULL,
     data_mb DECIMAL(12,2) NOT NULL,
     voice_minutes DECIMAL(10,2) NOT NULL,
@@ -73,7 +74,7 @@ BEGIN
   SELECT
     b.subscriber_id,
     NOW(6) as event_ts,
-    cs.market_id,
+    b.market_id,
     b.cell_site_id,
     b.session_count,
     b.data_mb,
@@ -81,8 +82,7 @@ BEGIN
     b.dropped_sessions,
     b.avg_session_latency_ms,
     b.qos_score
-  FROM _batch b
-  JOIN cell_sites cs ON b.cell_site_id = cs.cell_site_id;
+  FROM _batch b;
 END;
 
 -- Process care case creation
