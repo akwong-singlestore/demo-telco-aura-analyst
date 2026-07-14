@@ -358,21 +358,9 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
     }
   }
 
-  // Execute procedures
-  for (let i = 0; i < procedureStatements.length; i++) {
-    const stmt = procedureStatements[i];
-    if (stmt.statement.trim()) {
-      try {
-        console.log(`Executing procedure ${i + 1}/${procedureStatements.length}: ${stmt.name || 'unnamed'}`);
-        await Query(config, stmt.statement);
-      } catch (error) {
-        console.error(`Failed to create procedure ${i + 1}: ${stmt.name}`, error);
-        console.error('Statement:', stmt.statement.substring(0, 200));
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to create procedure ${stmt.name || i + 1}: ${errorMsg}`);
-      }
-    }
-  }
+  // Skip procedures - they are complex and cause parsing issues
+  // Users can manually run: SOURCE procedures.sql; if they need stored procedures
+  console.log('Skipping stored procedures - run procedures.sql manually if needed');
 };
 
 export const connectToDB = async (config: ConnectionConfig): Promise<boolean> => {
