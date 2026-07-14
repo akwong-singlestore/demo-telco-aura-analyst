@@ -12,8 +12,6 @@ import {
   Text,
   useColorMode,
   useColorModeValue,
-  Badge,
-  Avatar,
   Select,
 } from "@chakra-ui/react";
 import {
@@ -129,51 +127,6 @@ export const Nav: React.FC = () => {
             variant="ghost"
             size="sm"
           />
-
-          {/* User profile menu */}
-          <Menu>
-            <MenuButton
-              as={Button}
-              variant="ghost"
-              size="sm"
-              px={3}
-              bg={useColorModeValue("gray.100", "gray.700")}
-              _hover={{ bg: useColorModeValue("gray.200", "gray.600") }}
-              _active={{ bg: useColorModeValue("gray.200", "gray.600") }}
-            >
-              <HStack spacing={2}>
-                <Avatar size="xs" name="Admin" bg="blue.500">
-                  <Badge
-                    position="absolute"
-                    bottom="-2px"
-                    right="-2px"
-                    boxSize="10px"
-                    bg="green.400"
-                    borderRadius="full"
-                    border="2px solid"
-                    borderColor={bgColor}
-                  />
-                </Avatar>
-                <Text fontSize="sm" fontWeight="medium">
-                  AD
-                </Text>
-              </HStack>
-            </MenuButton>
-            <MenuList>
-              <MenuItem icon={<SettingsIcon />} as={RouterLink} to="/configure">
-                Configure Database & Aura
-              </MenuItem>
-              <MenuItem
-                icon={colorMode === "light" ? <MoonIcon /> : <SunIcon />}
-                onClick={toggleColorMode}
-              >
-                {colorMode === "light" ? "Dark" : "Light"} Mode
-              </MenuItem>
-              <MenuItem isDisabled fontSize="xs" color="gray.500">
-                Version 1.0.0 (Beta)
-              </MenuItem>
-            </MenuList>
-          </Menu>
         </HStack>
       </Flex>
     </Box>
