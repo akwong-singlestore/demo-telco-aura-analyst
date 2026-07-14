@@ -58,6 +58,7 @@ function transformSQL() {
     const lines = cleaned.split('\n');
     let currentProc = [];
     let inProcedure = false;
+    let depth = 0;
 
     for (const line of lines) {
       // Skip empty lines and comments when not in a procedure
@@ -76,17 +77,31 @@ function transformSQL() {
         }
         currentProc = [line];
         inProcedure = true;
+        depth = 0;
       } else if (inProcedure) {
         currentProc.push(line);
-        // End of procedure - match END; or END but NOT "END LOOP" or "END IF" or "END CASE"
+        // Track BEGIN depth to know when we've reached the procedure-ending END
+        // Don't check for end until we've seen at least one BEGIN
         const trimmedLine = line.trim();
-        if (/^END;?\s*$/i.test(trimmedLine) && !/END\s+(LOOP|IF|CASE|WHILE)/i.test(trimmedLine)) {
-          const procText = currentProc.join('\n').trim();
-          if (procText) {
-            procedures.push(parseStatement(procText));
+
+        if (/\bBEGIN\b/i.test(trimmedLine)) {
+          depth++;
+        } else if (/^END\s+(LOOP|IF|CASE|WHILE)/i.test(trimmedLine)) {
+          // Control structure end - ignore
+        } else if (/^END;?\s*$/i.test(trimmedLine)) {
+          // Could be END of CASE or END of procedure
+          if (depth > 0) {
+            depth--;
+            if (depth === 0) {
+              // This is the procedure-ending END
+              const procText = currentProc.join('\n').trim();
+              if (procText) {
+                procedures.push(parseStatement(procText));
+              }
+              currentProc = [];
+              inProcedure = false;
+            }
           }
-          currentProc = [];
-          inProcedure = false;
         }
       }
     }
