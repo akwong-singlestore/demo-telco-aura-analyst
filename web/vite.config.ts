@@ -60,11 +60,19 @@ function transformSQL() {
     let inProcedure = false;
 
     for (const line of lines) {
+      // Skip empty lines and comments when not in a procedure
+      if (!inProcedure && (line.trim() === '' || line.trim().startsWith('--'))) {
+        continue;
+      }
+
       // Start of a new procedure
       if (/CREATE\s+(OR\s+REPLACE\s+)?PROCEDURE/i.test(line)) {
         if (currentProc.length > 0) {
           // Save previous procedure
-          procedures.push(parseStatement(currentProc.join('\n')));
+          const procText = currentProc.join('\n').trim();
+          if (procText) {
+            procedures.push(parseStatement(procText));
+          }
         }
         currentProc = [line];
         inProcedure = true;
@@ -72,7 +80,10 @@ function transformSQL() {
         currentProc.push(line);
         // End of procedure
         if (/^END;?\s*$/i.test(line.trim())) {
-          procedures.push(parseStatement(currentProc.join('\n')));
+          const procText = currentProc.join('\n').trim();
+          if (procText) {
+            procedures.push(parseStatement(procText));
+          }
           currentProc = [];
           inProcedure = false;
         }
@@ -81,7 +92,10 @@ function transformSQL() {
 
     // Don't forget the last procedure
     if (currentProc.length > 0) {
-      procedures.push(parseStatement(currentProc.join('\n')));
+      const procText = currentProc.join('\n').trim();
+      if (procText) {
+        procedures.push(parseStatement(procText));
+      }
     }
 
     return procedures;
