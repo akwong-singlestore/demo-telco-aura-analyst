@@ -15,10 +15,18 @@ import {
   useBoolean,
   useColorModeValue,
   IconButton,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
+  Badge,
+  HStack,
+  Spinner,
+  useToast,
 } from "@chakra-ui/react";
-import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
+import { ViewIcon, ViewOffIcon, CheckCircleIcon, WarningIcon } from "@chakra-ui/icons";
 import * as React from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 
 import {
   connectionHost,
@@ -27,7 +35,9 @@ import {
   connectionDatabase,
   analystApiKey,
   analystEndpointUrl,
+  connectionConfig,
 } from "@/data/recoil";
+import { schemaObjects, resetSchema } from "@/data/queries";
 
 export const Configure: React.FC = () => {
   const [host, setHost] = useRecoilState(connectionHost);
@@ -36,12 +46,61 @@ export const Configure: React.FC = () => {
   const [database, setDatabase] = useRecoilState(connectionDatabase);
   const [apiKey, setApiKey] = useRecoilState(analystApiKey);
   const [endpointUrl, setEndpointUrl] = useRecoilState(analystEndpointUrl);
+  const config = useRecoilValue(connectionConfig);
 
   const [showPassword, setShowPassword] = useBoolean();
   const [showApiKey, setShowApiKey] = useBoolean();
+  const [schemaStatus, setSchemaStatus] = React.useState<{ [key: string]: boolean } | null>(null);
+  const [isCheckingSchema, setIsCheckingSchema] = React.useState(false);
+  const [isResettingSchema, setIsResettingSchema] = React.useState(false);
 
+  const toast = useToast();
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
+
+  const checkSchema = async () => {
+    setIsCheckingSchema(true);
+    try {
+      const status = await schemaObjects(config);
+      setSchemaStatus(status);
+    } catch (error) {
+      toast({
+        title: "Error checking schema",
+        description: error instanceof Error ? error.message : "Unknown error",
+        status: "error",
+        duration: 5000,
+      });
+    } finally {
+      setIsCheckingSchema(false);
+    }
+  };
+
+  const handleResetSchema = async () => {
+    if (!window.confirm("This will drop and recreate all tables, views, and procedures. Continue?")) {
+      return;
+    }
+
+    setIsResettingSchema(true);
+    try {
+      await resetSchema(config);
+      toast({
+        title: "Schema reset successful",
+        description: "Database has been created and populated with seed data",
+        status: "success",
+        duration: 5000,
+      });
+      await checkSchema();
+    } catch (error) {
+      toast({
+        title: "Error resetting schema",
+        description: error instanceof Error ? error.message : "Unknown error",
+        status: "error",
+        duration: 5000,
+      });
+    } finally {
+      setIsResettingSchema(false);
+    }
+  };
 
   return (
     <Container maxW="container.lg" py={10}>
@@ -107,6 +166,72 @@ export const Configure: React.FC = () => {
                 placeholder="telco"
               />
             </FormControl>
+          </Stack>
+        </Box>
+
+        <Box
+          bg={bgColor}
+          border="1px"
+          borderColor={borderColor}
+          borderRadius="lg"
+          p={6}
+        >
+          <Heading size="md" mb={4}>Database Setup</Heading>
+          <Text color="gray.600" mb={4}>
+            Create and populate the telco database with schema, seed data, and stored procedures.
+          </Text>
+
+          <Stack spacing={4}>
+            <HStack spacing={4}>
+              <Button
+                onClick={checkSchema}
+                isLoading={isCheckingSchema}
+                loadingText="Checking..."
+                size="md"
+                variant="outline"
+              >
+                Check Schema
+              </Button>
+              <Button
+                onClick={handleResetSchema}
+                isLoading={isResettingSchema}
+                loadingText="Setting up..."
+                size="md"
+                colorScheme="blue"
+              >
+                Setup Database
+              </Button>
+            </HStack>
+
+            {schemaStatus && Object.keys(schemaStatus).length > 0 && (
+              <Box>
+                <Text fontWeight="medium" mb={2}>Schema Status:</Text>
+                <Stack spacing={2}>
+                  {Object.entries(schemaStatus).map(([name, exists]) => (
+                    <HStack key={name}>
+                      {exists ? (
+                        <CheckCircleIcon color="green.500" />
+                      ) : (
+                        <WarningIcon color="orange.500" />
+                      )}
+                      <Text fontSize="sm">{name}</Text>
+                      <Badge colorScheme={exists ? "green" : "orange"}>
+                        {exists ? "exists" : "missing"}
+                      </Badge>
+                    </HStack>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            {schemaStatus && Object.keys(schemaStatus).length === 0 && (
+              <Alert status="warning">
+                <AlertIcon />
+                <AlertDescription>
+                  Database not found. Click "Setup Database" to create it.
+                </AlertDescription>
+              </Alert>
+            )}
           </Stack>
         </Box>
 

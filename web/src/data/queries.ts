@@ -2,6 +2,9 @@ import useSWR from "swr";
 import { useRecoilValue } from "recoil";
 import { connectionConfig, timeWindow } from "./recoil";
 import { Query, QueryNoDb, ConnectionConfig, Row } from "./client";
+import schemaStatements from "../../sql/schema.sql";
+import seedStatements from "../../sql/seed.sql";
+import procedureStatements from "../../sql/procedures.sql";
 
 // Helper to convert time window string to SQL INTERVAL
 const timeWindowToInterval = (window: string): string => {
@@ -246,7 +249,7 @@ export const useCareVolumeByIssue = () => {
   });
 };
 
-// Stub functions for RTDM compatibility
+// Schema management
 export const isConnected = async (config: ConnectionConfig): Promise<boolean> => {
   try {
     await QueryNoDb(config, "SELECT 1");
@@ -257,11 +260,110 @@ export const isConnected = async (config: ConnectionConfig): Promise<boolean> =>
 };
 
 export const schemaObjects = async (config: ConnectionConfig): Promise<{ [key: string]: boolean }> => {
-  return {};
+  try {
+    // Check if database exists
+    const dbResult = await QueryNoDb(config, `SHOW DATABASES LIKE '${config.database}'`);
+    if (dbResult.length === 0) {
+      return {};
+    }
+
+    // Check for key tables
+    const tables = await Query<{ table_name: string }>(
+      config,
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = '${config.database}'
+       AND table_type = 'BASE TABLE'`
+    );
+
+    const views = await Query<{ table_name: string }>(
+      config,
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = '${config.database}'
+       AND table_type = 'VIEW'`
+    );
+
+    const procedures = await Query<{ routine_name: string }>(
+      config,
+      `SELECT routine_name FROM information_schema.routines
+       WHERE routine_schema = '${config.database}'
+       AND routine_type = 'PROCEDURE'`
+    );
+
+    const result: { [key: string]: boolean } = {};
+
+    // Expected tables
+    ['subscriber_master', 'network_experience_events', 'care_cases', 'retention_actions', 'subscriber_usage_summary'].forEach(table => {
+      result[table] = tables.some(t => t.table_name === table);
+    });
+
+    // Expected views
+    ['subscriber_experience_scores', 'market_degradation_summary', 'at_risk_high_value_subscribers', 'intervention_effectiveness'].forEach(view => {
+      result[view] = views.some(v => v.table_name === view);
+    });
+
+    // Expected procedures
+    ['process_network_events', 'process_usage_summary', 'process_care_cases', 'process_retention_actions'].forEach(proc => {
+      result[proc] = procedures.some(p => p.routine_name === proc);
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error checking schema objects:", error);
+    return {};
+  }
 };
 
 export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
-  // Not implemented for telco demo
+  // Create database if it doesn't exist
+  await QueryNoDb(config, `CREATE DATABASE IF NOT EXISTS ${config.database}`);
+
+  // Drop existing tables/views/procedures to ensure clean slate
+  try {
+    const tables = await Query<{ table_name: string }>(
+      config,
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = '${config.database}'`
+    );
+
+    for (const table of tables) {
+      await Query(config, `DROP TABLE IF EXISTS ${table.table_name}`);
+      await Query(config, `DROP VIEW IF EXISTS ${table.table_name}`);
+    }
+
+    const procedures = await Query<{ routine_name: string }>(
+      config,
+      `SELECT routine_name FROM information_schema.routines
+       WHERE routine_schema = '${config.database}'
+       AND routine_type = 'PROCEDURE'`
+    );
+
+    for (const proc of procedures) {
+      await Query(config, `DROP PROCEDURE IF EXISTS ${proc.routine_name}`);
+    }
+  } catch (error) {
+    console.warn("Error dropping existing objects:", error);
+  }
+
+  // Execute schema statements
+  for (const stmt of schemaStatements) {
+    if (stmt.statement.trim()) {
+      await Query(config, stmt.statement);
+    }
+  }
+
+  // Execute seed data
+  for (const stmt of seedStatements) {
+    if (stmt.statement.trim()) {
+      await Query(config, stmt.statement);
+    }
+  }
+
+  // Execute procedures
+  for (const stmt of procedureStatements) {
+    if (stmt.statement.trim()) {
+      await Query(config, stmt.statement);
+    }
+  }
 };
 
 export const connectToDB = async (config: ConnectionConfig): Promise<boolean> => {
