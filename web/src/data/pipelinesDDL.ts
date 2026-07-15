@@ -7,9 +7,8 @@ export const pipelinesDDL = [
     sql: `CREATE PIPELINE IF NOT EXISTS network_events_pipeline
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/network_events.*'
 CONFIG '{"region": "us-east-1"}'
-SKIP DUPLICATE KEY ERRORS
-FORMAT PARQUET
 INTO PROCEDURE process_network_events
+FORMAT PARQUET
 (
   subscriber_id,
   cell_site_id,
@@ -27,9 +26,8 @@ INTO PROCEDURE process_network_events
     sql: `CREATE PIPELINE IF NOT EXISTS usage_summary_pipeline
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/usage_summary.*'
 CONFIG '{"region": "us-east-1"}'
-SKIP DUPLICATE KEY ERRORS
-FORMAT PARQUET
 INTO PROCEDURE process_usage_summary
+FORMAT PARQUET
 (
   subscriber_id,
   cell_site_id,
@@ -47,9 +45,8 @@ INTO PROCEDURE process_usage_summary
     sql: `CREATE PIPELINE IF NOT EXISTS care_cases_pipeline
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/care_cases.*'
 CONFIG '{"region": "us-east-1"}'
-SKIP DUPLICATE KEY ERRORS
-FORMAT PARQUET
 INTO PROCEDURE process_care_cases
+FORMAT PARQUET
 (
   subscriber_id,
   channel,
@@ -62,9 +59,8 @@ INTO PROCEDURE process_care_cases
     sql: `CREATE PIPELINE IF NOT EXISTS retention_actions_pipeline
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/retention_actions.*'
 CONFIG '{"region": "us-east-1"}'
-SKIP DUPLICATE KEY ERRORS
-FORMAT PARQUET
 INTO PROCEDURE process_retention_actions
+FORMAT PARQUET
 (
   subscriber_id,
   action_type,
