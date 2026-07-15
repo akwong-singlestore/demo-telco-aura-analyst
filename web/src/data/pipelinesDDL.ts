@@ -7,69 +7,32 @@ export const pipelinesDDL = [
     sql: `CREATE PIPELINE IF NOT EXISTS network_events_pipeline
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/network_events.*'
 CONFIG '{"region": "us-east-1"}'
-INTO PROCEDURE process_network_events
 FORMAT PARQUET
-(
-  subscriber_id,
-  cell_site_id,
-  market_id,
-  region_name,
-  technology_type,
-  event_type,
-  severity,
-  duration_seconds,
-  impacted_service
-);`
+INTO PROCEDURE process_network_events;`
   },
   {
     name: "usage_summary_pipeline",
     sql: `CREATE PIPELINE IF NOT EXISTS usage_summary_pipeline
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/usage_summary.*'
 CONFIG '{"region": "us-east-1"}'
-INTO PROCEDURE process_usage_summary
 FORMAT PARQUET
-(
-  subscriber_id,
-  cell_site_id,
-  market_id,
-  session_count,
-  data_mb,
-  voice_minutes,
-  dropped_sessions,
-  avg_session_latency_ms,
-  qos_score
-);`
+INTO PROCEDURE process_usage_summary;`
   },
   {
     name: "care_cases_pipeline",
     sql: `CREATE PIPELINE IF NOT EXISTS care_cases_pipeline
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/care_cases.*'
 CONFIG '{"region": "us-east-1"}'
-INTO PROCEDURE process_care_cases
 FORMAT PARQUET
-(
-  subscriber_id,
-  channel,
-  issue_category,
-  related_service_issue_flag
-);`
+INTO PROCEDURE process_care_cases;`
   },
   {
     name: "retention_actions_pipeline",
     sql: `CREATE PIPELINE IF NOT EXISTS retention_actions_pipeline
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/retention_actions.*'
 CONFIG '{"region": "us-east-1"}'
-INTO PROCEDURE process_retention_actions
 FORMAT PARQUET
-(
-  subscriber_id,
-  action_type,
-  channel,
-  reason_code,
-  accepted_flag,
-  conversion_flag,
-  revenue_impact
-);`
+INTO PROCEDURE process_retention_actions;`
   }
 ];
 
