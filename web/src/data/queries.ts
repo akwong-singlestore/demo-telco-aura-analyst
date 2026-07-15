@@ -556,10 +556,6 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
         }
       }
 
-      console.log('[Streaming] Data generation cycle complete');
-    } catch (error) {
-      console.error('[Streaming] Error:', error);
-
       // Occasionally generate care cases (30% chance)
       if (Math.random() < 0.3 && subscribers.length > 0) {
         const sub = subscribers[Math.floor(Math.random() * subscribers.length)];
