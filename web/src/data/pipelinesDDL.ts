@@ -8,6 +8,7 @@ export const pipelinesDDL = [
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/network_events.*'
 CONFIG '{"region": "us-east-1"}'
 SKIP DUPLICATE KEY ERRORS
+FORMAT PARQUET
 INTO PROCEDURE process_network_events
 (
   subscriber_id,
@@ -19,8 +20,7 @@ INTO PROCEDURE process_network_events
   severity,
   duration_seconds,
   impacted_service
-)
-FORMAT PARQUET;`
+);`
   },
   {
     name: "usage_summary_pipeline",
@@ -28,6 +28,7 @@ FORMAT PARQUET;`
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/usage_summary.*'
 CONFIG '{"region": "us-east-1"}'
 SKIP DUPLICATE KEY ERRORS
+FORMAT PARQUET
 INTO PROCEDURE process_usage_summary
 (
   subscriber_id,
@@ -39,8 +40,7 @@ INTO PROCEDURE process_usage_summary
   dropped_sessions,
   avg_session_latency_ms,
   qos_score
-)
-FORMAT PARQUET;`
+);`
   },
   {
     name: "care_cases_pipeline",
@@ -48,14 +48,14 @@ FORMAT PARQUET;`
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/care_cases.*'
 CONFIG '{"region": "us-east-1"}'
 SKIP DUPLICATE KEY ERRORS
+FORMAT PARQUET
 INTO PROCEDURE process_care_cases
 (
   subscriber_id,
   channel,
   issue_category,
   related_service_issue_flag
-)
-FORMAT PARQUET;`
+);`
   },
   {
     name: "retention_actions_pipeline",
@@ -63,6 +63,7 @@ FORMAT PARQUET;`
 AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/retention_actions.*'
 CONFIG '{"region": "us-east-1"}'
 SKIP DUPLICATE KEY ERRORS
+FORMAT PARQUET
 INTO PROCEDURE process_retention_actions
 (
   subscriber_id,
@@ -72,8 +73,7 @@ INTO PROCEDURE process_retention_actions
   accepted_flag,
   conversion_flag,
   revenue_impact
-)
-FORMAT PARQUET;`
+);`
   }
 ];
 
