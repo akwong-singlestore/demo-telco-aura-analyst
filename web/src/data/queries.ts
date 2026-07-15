@@ -375,6 +375,13 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
   try {
     console.log('Generating demo subscriber data...');
 
+    // Clear existing demo data first
+    await Query(config, 'TRUNCATE TABLE retention_actions;');
+    await Query(config, 'TRUNCATE TABLE care_cases;');
+    await Query(config, 'TRUNCATE TABLE network_experience_events;');
+    await Query(config, 'TRUNCATE TABLE subscriber_usage_summary;');
+    await Query(config, 'TRUNCATE TABLE subscriber_master;');
+
     // Create 1000 demo subscribers (using cross join for compatibility)
     await Query(config, `
       INSERT INTO subscriber_master (subscriber_id, account_id, line_type, tenure_days, plan_type, monthly_revenue, device_model, device_os, home_market_id, enterprise_account_id, churn_risk_band)
@@ -396,63 +403,70 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
       LIMIT 1000;
     `);
 
-    // Generate network events for last 7 days
-    await Query(config, `
-      INSERT INTO network_experience_events (event_ts, subscriber_id, cell_site_id, market_id, region_name, technology_type, event_type, severity, duration_seconds, impacted_service, resolved_flag)
-      SELECT
-        NOW(6) - INTERVAL FLOOR(RAND() * 168) HOUR AS event_ts,
-        1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
-        cs.cell_site_id,
-        m.market_id,
-        m.region_name,
-        CASE FLOOR(RAND() * 3) WHEN 0 THEN '5G' WHEN 1 THEN '4G LTE' ELSE 'Wi-Fi' END AS technology_type,
-        CASE FLOOR(RAND() * 5) WHEN 0 THEN 'call_drop' WHEN 1 THEN 'slow_data' WHEN 2 THEN 'no_service' WHEN 3 THEN 'high_latency' ELSE 'poor_quality' END AS event_type,
-        CASE FLOOR(RAND() * 4) WHEN 0 THEN 'minor' WHEN 1 THEN 'major' WHEN 2 THEN 'critical' ELSE 'minor' END AS severity,
-        60 + FLOOR(RAND() * 600) AS duration_seconds,
-        CASE FLOOR(RAND() * 3) WHEN 0 THEN 'voice' WHEN 1 THEN 'data' ELSE 'messaging' END AS impacted_service,
-        RAND() < 0.8 AS resolved_flag
-      FROM market_reference m
-      CROSS JOIN cell_sites cs
-      WHERE m.market_id = cs.market_id
-      LIMIT 500;
-    `);
+    // Generate network events spread across last 7 days (evenly distributed)
+    // Create events at different time intervals to make time-range filtering meaningful
+    for (let hoursAgo = 0; hoursAgo < 168; hoursAgo += 2) {
+      await Query(config, `
+        INSERT INTO network_experience_events (event_ts, subscriber_id, cell_site_id, market_id, region_name, technology_type, event_type, severity, duration_seconds, impacted_service, resolved_flag)
+        SELECT
+          NOW(6) - INTERVAL ${hoursAgo} HOUR - INTERVAL FLOOR(RAND() * 7200) SECOND AS event_ts,
+          1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
+          cs.cell_site_id,
+          m.market_id,
+          m.region_name,
+          CASE FLOOR(RAND() * 3) WHEN 0 THEN '5G' WHEN 1 THEN '4G LTE' ELSE 'Wi-Fi' END AS technology_type,
+          CASE FLOOR(RAND() * 5) WHEN 0 THEN 'call_drop' WHEN 1 THEN 'slow_data' WHEN 2 THEN 'no_service' WHEN 3 THEN 'high_latency' ELSE 'poor_quality' END AS event_type,
+          CASE FLOOR(RAND() * 4) WHEN 0 THEN 'minor' WHEN 1 THEN 'major' WHEN 2 THEN 'critical' ELSE 'minor' END AS severity,
+          60 + FLOOR(RAND() * 600) AS duration_seconds,
+          CASE FLOOR(RAND() * 3) WHEN 0 THEN 'voice' WHEN 1 THEN 'data' ELSE 'messaging' END AS impacted_service,
+          RAND() < 0.8 AS resolved_flag
+        FROM market_reference m
+        CROSS JOIN cell_sites cs
+        WHERE m.market_id = cs.market_id
+        LIMIT 6;
+      `);
+    }
 
-    // Generate care cases for last 30 days
-    await Query(config, `
-      INSERT INTO care_cases (subscriber_id, opened_ts, closed_ts, channel, issue_category, resolution_code, handle_time_seconds, escalation_flag, csat_score, related_service_issue_flag)
-      SELECT
-        1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
-        NOW(6) - INTERVAL FLOOR(RAND() * 720) HOUR AS opened_ts,
-        CASE WHEN RAND() < 0.7 THEN NOW(6) - INTERVAL FLOOR(RAND() * 600) HOUR ELSE NULL END AS closed_ts,
-        CASE FLOOR(RAND() * 4) WHEN 0 THEN 'phone' WHEN 1 THEN 'chat' WHEN 2 THEN 'email' ELSE 'store' END AS channel,
-        CASE FLOOR(RAND() * 5) WHEN 0 THEN 'network_quality' WHEN 1 THEN 'billing' WHEN 2 THEN 'device_support' WHEN 3 THEN 'plan_change' ELSE 'technical_support' END AS issue_category,
-        CASE WHEN RAND() < 0.7 THEN CASE FLOOR(RAND() * 3) WHEN 0 THEN 'resolved_service_issue' WHEN 1 THEN 'provided_troubleshooting' ELSE 'account_adjustment' END ELSE NULL END AS resolution_code,
-        300 + FLOOR(RAND() * 1800) AS handle_time_seconds,
-        RAND() < 0.1 AS escalation_flag,
-        CASE WHEN RAND() < 0.7 THEN 1 + FLOOR(RAND() * 5) ELSE NULL END AS csat_score,
-        RAND() < 0.3 AS related_service_issue_flag
-      FROM market_reference m1
-      CROSS JOIN market_reference m2
-      LIMIT 200;
-    `);
+    // Generate care cases spread across last 7 days
+    for (let hoursAgo = 0; hoursAgo < 168; hoursAgo += 4) {
+      await Query(config, `
+        INSERT INTO care_cases (subscriber_id, opened_ts, closed_ts, channel, issue_category, resolution_code, handle_time_seconds, escalation_flag, csat_score, related_service_issue_flag)
+        SELECT
+          1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
+          NOW(6) - INTERVAL ${hoursAgo} HOUR - INTERVAL FLOOR(RAND() * 14400) SECOND AS opened_ts,
+          CASE WHEN RAND() < 0.7 THEN NOW(6) - INTERVAL ${hoursAgo} HOUR + INTERVAL FLOOR(RAND() * 7200) SECOND ELSE NULL END AS closed_ts,
+          CASE FLOOR(RAND() * 4) WHEN 0 THEN 'phone' WHEN 1 THEN 'chat' WHEN 2 THEN 'email' ELSE 'store' END AS channel,
+          CASE FLOOR(RAND() * 5) WHEN 0 THEN 'network_quality' WHEN 1 THEN 'billing' WHEN 2 THEN 'device_support' WHEN 3 THEN 'plan_change' ELSE 'technical_support' END AS issue_category,
+          CASE WHEN RAND() < 0.7 THEN CASE FLOOR(RAND() * 3) WHEN 0 THEN 'resolved_service_issue' WHEN 1 THEN 'provided_troubleshooting' ELSE 'account_adjustment' END ELSE NULL END AS resolution_code,
+          300 + FLOOR(RAND() * 1800) AS handle_time_seconds,
+          RAND() < 0.1 AS escalation_flag,
+          CASE WHEN RAND() < 0.7 THEN 1 + FLOOR(RAND() * 5) ELSE NULL END AS csat_score,
+          RAND() < 0.3 AS related_service_issue_flag
+        FROM market_reference m1
+        CROSS JOIN market_reference m2
+        LIMIT 5;
+      `);
+    }
 
-    // Generate retention actions for last 30 days
-    await Query(config, `
-      INSERT INTO retention_actions (subscriber_id, action_ts, action_type, channel, reason_code, accepted_flag, conversion_flag, revenue_impact)
-      SELECT
-        1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
-        NOW(6) - INTERVAL FLOOR(RAND() * 720) HOUR AS action_ts,
-        CASE FLOOR(RAND() * 4) WHEN 0 THEN 'discount_offer' WHEN 1 THEN 'plan_upgrade' WHEN 2 THEN 'loyalty_credit' ELSE 'retention_call' END AS action_type,
-        CASE FLOOR(RAND() * 3) WHEN 0 THEN 'outbound_call' WHEN 1 THEN 'email' ELSE 'sms' END AS channel,
-        CASE FLOOR(RAND() * 3) WHEN 0 THEN 'churn_risk' WHEN 1 THEN 'competitive_offer' ELSE 'service_complaint' END AS reason_code,
-        RAND() < 0.35 AS accepted_flag,
-        RAND() < 0.25 AS conversion_flag,
-        -10.00 - (RAND() * 15.00) AS revenue_impact
-      FROM market_reference m1
-      CROSS JOIN market_reference m2
-      WHERE m1.market_id <= 7
-      LIMIT 100;
-    `);
+    // Generate retention actions spread across last 7 days
+    for (let hoursAgo = 0; hoursAgo < 168; hoursAgo += 8) {
+      await Query(config, `
+        INSERT INTO retention_actions (subscriber_id, action_ts, action_type, channel, reason_code, accepted_flag, conversion_flag, revenue_impact)
+        SELECT
+          1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
+          NOW(6) - INTERVAL ${hoursAgo} HOUR - INTERVAL FLOOR(RAND() * 28800) SECOND AS action_ts,
+          CASE FLOOR(RAND() * 4) WHEN 0 THEN 'discount_offer' WHEN 1 THEN 'plan_upgrade' WHEN 2 THEN 'loyalty_credit' ELSE 'retention_call' END AS action_type,
+          CASE FLOOR(RAND() * 3) WHEN 0 THEN 'outbound_call' WHEN 1 THEN 'email' ELSE 'sms' END AS channel,
+          CASE FLOOR(RAND() * 3) WHEN 0 THEN 'churn_risk' WHEN 1 THEN 'competitive_offer' ELSE 'service_complaint' END AS reason_code,
+          RAND() < 0.35 AS accepted_flag,
+          RAND() < 0.25 AS conversion_flag,
+          -10.00 - (RAND() * 15.00) AS revenue_impact
+        FROM market_reference m1
+        CROSS JOIN market_reference m2
+        WHERE m1.market_id <= 7
+        LIMIT 5;
+      `);
+    }
 
     console.log('Demo data generated successfully');
   } catch (error) {
