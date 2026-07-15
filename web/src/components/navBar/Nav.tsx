@@ -26,6 +26,7 @@ import * as React from "react";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 import { useRecoilState } from "recoil";
 import { timeWindow } from "@/data/recoil";
+import { mutate } from "swr";
 
 import SingleStoreLogoLight from "@/assets/singlestore-logo-light.svg";
 import SingleStoreLogoDark from "@/assets/singlestore-logo-dark-new.svg";
@@ -36,8 +37,19 @@ export const Nav: React.FC = () => {
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.600");
   const [selectedTimeWindow, setSelectedTimeWindow] = useRecoilState(timeWindow);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Revalidate all SWR caches to fetch fresh data
+      await mutate(() => true);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   return (
     <Box
@@ -103,10 +115,13 @@ export const Nav: React.FC = () => {
 
           {/* Refresh button */}
           <IconButton
-            aria-label="Refresh"
+            aria-label="Refresh data"
             icon={<RepeatIcon />}
             variant="ghost"
             size="sm"
+            onClick={handleRefresh}
+            isLoading={isRefreshing}
+            _hover={{ transform: "rotate(180deg)", transition: "transform 0.3s" }}
           />
 
           {/* Settings button */}
