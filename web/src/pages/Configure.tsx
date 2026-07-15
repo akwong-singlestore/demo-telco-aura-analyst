@@ -24,7 +24,7 @@ import {
   Spinner,
   useToast,
 } from "@chakra-ui/react";
-import { ViewIcon, ViewOffIcon, CheckCircleIcon, WarningIcon } from "@chakra-ui/icons";
+import { ViewIcon, ViewOffIcon, CheckCircleIcon, WarningIcon, RepeatIcon, RepeatClockIcon } from "@chakra-ui/icons";
 import * as React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 
@@ -36,8 +36,9 @@ import {
   analystApiKey,
   analystEndpointUrl,
   connectionConfig,
+  simulatorEnabled,
 } from "@/data/recoil";
-import { schemaObjects, resetSchema } from "@/data/queries";
+import { schemaObjects, resetSchema, setSessionController, isStreaming } from "@/data/queries";
 
 export const Configure: React.FC = () => {
   const [host, setHost] = useRecoilState(connectionHost);
@@ -46,6 +47,7 @@ export const Configure: React.FC = () => {
   const [database, setDatabase] = useRecoilState(connectionDatabase);
   const [apiKey, setApiKey] = useRecoilState(analystApiKey);
   const [endpointUrl, setEndpointUrl] = useRecoilState(analystEndpointUrl);
+  const [streamingEnabled, setStreamingEnabled] = useRecoilState(simulatorEnabled);
   const config = useRecoilValue(connectionConfig);
 
   const [showPassword, setShowPassword] = useBoolean();
@@ -54,6 +56,7 @@ export const Configure: React.FC = () => {
   const [isCheckingSchema, setIsCheckingSchema] = React.useState(false);
   const [isResettingSchema, setIsResettingSchema] = React.useState(false);
   const [configSaved, setConfigSaved] = React.useState(false);
+  const [streamingActive, setStreamingActive] = React.useState(false);
 
   const toast = useToast();
   const bgColor = useColorModeValue("white", "gray.800");
@@ -131,6 +134,35 @@ export const Configure: React.FC = () => {
   React.useEffect(() => {
     setConfigSaved(false);
   }, [host, user, password, database, apiKey, endpointUrl]);
+
+  // Check streaming status on mount
+  React.useEffect(() => {
+    setStreamingActive(isStreaming());
+  }, []);
+
+  const handleToggleStreaming = async () => {
+    try {
+      const newState = !streamingActive;
+      await setSessionController(config, newState);
+      setStreamingActive(newState);
+      setStreamingEnabled(newState);
+      toast({
+        title: newState ? "Data streaming started" : "Data streaming stopped",
+        description: newState
+          ? "New events will be generated every 3 seconds"
+          : "Data generation has been paused",
+        status: "success",
+        duration: 3000,
+      });
+    } catch (error) {
+      toast({
+        title: "Error toggling streaming",
+        description: error instanceof Error ? error.message : "Unknown error",
+        status: "error",
+        duration: 5000,
+      });
+    }
+  };
 
   return (
     <Container maxW="container.lg" py={10}>
@@ -269,6 +301,47 @@ export const Configure: React.FC = () => {
                 </AlertDescription>
               </Alert>
             )}
+          </Stack>
+        </Box>
+
+        <Box
+          bg={bgColor}
+          border="1px"
+          borderColor={borderColor}
+          borderRadius="lg"
+          p={6}
+        >
+          <Heading size="md" mb={4}>Data Streaming</Heading>
+          <Text color="gray.600" mb={4}>
+            Simulate real-time data ingestion by continuously generating new network events, care cases, and retention actions.
+          </Text>
+
+          <Stack spacing={4}>
+            <HStack spacing={4}>
+              <Button
+                onClick={handleToggleStreaming}
+                colorScheme={streamingActive ? "red" : "green"}
+                leftIcon={streamingActive ? <RepeatClockIcon /> : <RepeatIcon />}
+                size="md"
+              >
+                {streamingActive ? "Stop Data Stream" : "Start Data Stream"}
+              </Button>
+              {streamingActive && (
+                <Badge colorScheme="green" fontSize="md" px={3} py={1}>
+                  <HStack spacing={2}>
+                    <Spinner size="xs" />
+                    <Text>Streaming Active</Text>
+                  </HStack>
+                </Badge>
+              )}
+            </HStack>
+
+            <Alert status="info" fontSize="sm">
+              <AlertIcon />
+              <AlertDescription>
+                When streaming is active, new data is generated every 3 seconds to simulate real-time telco network events.
+              </AlertDescription>
+            </Alert>
           </Stack>
         </Box>
 

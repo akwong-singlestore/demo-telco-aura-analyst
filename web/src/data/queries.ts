@@ -493,10 +493,131 @@ export const connectToDB = async (config: ConnectionConfig): Promise<boolean> =>
   return isConnected(config);
 };
 
+// Streaming simulation
+let streamingInterval: NodeJS.Timeout | null = null;
+
+export const startStreaming = async (config: ConnectionConfig): Promise<void> => {
+  if (streamingInterval) {
+    return; // Already streaming
+  }
+
+  console.log('Starting data stream simulation...');
+
+  streamingInterval = setInterval(async () => {
+    try {
+      // Get random subscriber IDs from existing subscribers
+      const subscribers = await Query<{ subscriber_id: number; home_market_id: number }>(
+        config,
+        'SELECT subscriber_id, home_market_id FROM subscriber_master ORDER BY RAND() LIMIT 5'
+      );
+
+      if (subscribers.length === 0) return;
+
+      // Generate new network events
+      for (const sub of subscribers.slice(0, 3)) {
+        const cellSites = await Query<{ cell_site_id: number; market_id: number; site_name: string }>(
+          config,
+          `SELECT cell_site_id, market_id, site_name FROM cell_sites WHERE market_id = ${sub.home_market_id} ORDER BY RAND() LIMIT 1`
+        );
+
+        if (cellSites.length > 0) {
+          const site = cellSites[0];
+          const markets = await Query<{ region_name: string }>(
+            config,
+            `SELECT region_name FROM market_reference WHERE market_id = ${site.market_id} LIMIT 1`
+          );
+
+          const eventTypes = ['call_drop', 'slow_data', 'no_service', 'high_latency', 'poor_quality'];
+          const severities = ['minor', 'major', 'critical'];
+          const techTypes = ['5G', '4G LTE', 'Wi-Fi'];
+          const services = ['voice', 'data', 'messaging'];
+
+          await Query(config, `
+            INSERT INTO network_experience_events (event_ts, subscriber_id, cell_site_id, market_id, region_name, technology_type, event_type, severity, duration_seconds, impacted_service, resolved_flag)
+            VALUES (
+              NOW(6),
+              ${sub.subscriber_id},
+              ${site.cell_site_id},
+              ${site.market_id},
+              '${markets[0].region_name}',
+              '${techTypes[Math.floor(Math.random() * techTypes.length)]}',
+              '${eventTypes[Math.floor(Math.random() * eventTypes.length)]}',
+              '${severities[Math.floor(Math.random() * severities.length)]}',
+              ${60 + Math.floor(Math.random() * 600)},
+              '${services[Math.floor(Math.random() * services.length)]}',
+              ${Math.random() < 0.8}
+            );
+          `);
+        }
+      }
+
+      // Occasionally generate care cases (30% chance)
+      if (Math.random() < 0.3 && subscribers.length > 0) {
+        const sub = subscribers[Math.floor(Math.random() * subscribers.length)];
+        const channels = ['phone', 'chat', 'email', 'store'];
+        const issues = ['network_quality', 'billing', 'device_support', 'plan_change', 'technical_support'];
+
+        await Query(config, `
+          INSERT INTO care_cases (subscriber_id, opened_ts, channel, issue_category, related_service_issue_flag)
+          VALUES (
+            ${sub.subscriber_id},
+            NOW(6),
+            '${channels[Math.floor(Math.random() * channels.length)]}',
+            '${issues[Math.floor(Math.random() * issues.length)]}',
+            ${Math.random() < 0.3}
+          );
+        `);
+      }
+
+      // Occasionally generate retention actions (20% chance)
+      if (Math.random() < 0.2 && subscribers.length > 0) {
+        const sub = subscribers[Math.floor(Math.random() * subscribers.length)];
+        const actionTypes = ['discount_offer', 'plan_upgrade', 'loyalty_credit', 'retention_call'];
+        const channels = ['outbound_call', 'email', 'sms'];
+        const reasons = ['churn_risk', 'competitive_offer', 'service_complaint'];
+
+        await Query(config, `
+          INSERT INTO retention_actions (subscriber_id, action_ts, action_type, channel, reason_code, accepted_flag, conversion_flag, revenue_impact)
+          VALUES (
+            ${sub.subscriber_id},
+            NOW(6),
+            '${actionTypes[Math.floor(Math.random() * actionTypes.length)]}',
+            '${channels[Math.floor(Math.random() * channels.length)]}',
+            '${reasons[Math.floor(Math.random() * reasons.length)]}',
+            ${Math.random() < 0.35},
+            ${Math.random() < 0.25},
+            ${(-10.00 - (Math.random() * 15.00)).toFixed(2)}
+          );
+        `);
+      }
+
+    } catch (error) {
+      console.error('Streaming simulation error:', error);
+    }
+  }, 3000); // Insert new data every 3 seconds
+};
+
+export const stopStreaming = (): void => {
+  if (streamingInterval) {
+    clearInterval(streamingInterval);
+    streamingInterval = null;
+    console.log('Data stream simulation stopped');
+  }
+};
+
+export const isStreaming = (): boolean => {
+  return streamingInterval !== null;
+};
+
 export const updateSessions = async (config: ConnectionConfig): Promise<void> => {
   // Not implemented for telco demo
 };
 
 export const setSessionController = async (config: ConnectionConfig, enabled: boolean): Promise<void> => {
-  // Simulator control not implemented in web UI
+  // Control streaming simulation
+  if (enabled) {
+    await startStreaming(config);
+  } else {
+    stopStreaming();
+  }
 };
