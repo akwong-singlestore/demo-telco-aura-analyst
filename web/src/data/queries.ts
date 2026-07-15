@@ -371,28 +371,90 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
     }
   }
 
-  // Create and start S3 pipelines to ingest demo data
-  for (const pipeline of pipelinesDDL) {
-    try {
-      console.log(`Creating pipeline: ${pipeline.name}`);
-      await Query(config, pipeline.sql);
-    } catch (error) {
-      console.error(`Failed to create pipeline ${pipeline.name}:`, error);
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to create pipeline ${pipeline.name}: ${errorMsg}`);
-    }
+  // Generate some static demo data for immediate dashboard visualization
+  try {
+    console.log('Generating demo subscriber data...');
+
+    // Create 1000 demo subscribers
+    await Query(config, `
+      INSERT INTO subscriber_master (subscriber_id, account_id, line_type, tenure_days, plan_type, monthly_revenue, device_model, device_os, home_market_id, enterprise_account_id, churn_risk_band)
+      SELECT
+        1000000 + seq AS subscriber_id,
+        1000000 + seq AS account_id,
+        CASE WHEN RAND() < 0.6 THEN 'postpaid' WHEN RAND() < 0.9 THEN 'prepaid' ELSE 'enterprise' END AS line_type,
+        FLOOR(RAND() * 3650) AS tenure_days,
+        CASE WHEN RAND() < 0.3 THEN 'Unlimited Premium' WHEN RAND() < 0.6 THEN 'Unlimited Plus' ELSE 'Unlimited Basic' END AS plan_type,
+        45.00 + (RAND() * 155.00) AS monthly_revenue,
+        CASE FLOOR(RAND() * 5) WHEN 0 THEN 'iPhone 14' WHEN 1 THEN 'iPhone 13' WHEN 2 THEN 'Samsung Galaxy S23' WHEN 3 THEN 'Google Pixel 7' ELSE 'Samsung Galaxy A54' END AS device_model,
+        CASE FLOOR(RAND() * 2) WHEN 0 THEN 'iOS' ELSE 'Android' END AS device_os,
+        1 + FLOOR(RAND() * 15) AS home_market_id,
+        NULL AS enterprise_account_id,
+        CASE WHEN RAND() < 0.65 THEN 'low' WHEN RAND() < 0.90 THEN 'medium' WHEN RAND() < 0.97 THEN 'high' ELSE 'critical' END AS churn_risk_band
+      FROM TABLE(GENERATOR(ROWCOUNT => 1000)) AS seq;
+    `);
+
+    // Generate network events for last 7 days
+    await Query(config, `
+      INSERT INTO network_experience_events (event_ts, subscriber_id, cell_site_id, market_id, region_name, technology_type, event_type, severity, duration_seconds, impacted_service, resolved_flag)
+      SELECT
+        NOW(6) - INTERVAL FLOOR(RAND() * 168) HOUR AS event_ts,
+        1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
+        1000 + FLOOR(RAND() * 50) AS cell_site_id,
+        1 + FLOOR(RAND() * 15) AS market_id,
+        m.region_name,
+        CASE FLOOR(RAND() * 3) WHEN 0 THEN '5G' WHEN 1 THEN '4G LTE' ELSE 'Wi-Fi' END AS technology_type,
+        CASE FLOOR(RAND() * 5) WHEN 0 THEN 'call_drop' WHEN 1 THEN 'slow_data' WHEN 2 THEN 'no_service' WHEN 3 THEN 'high_latency' ELSE 'poor_quality' END AS event_type,
+        CASE FLOOR(RAND() * 4) WHEN 0 THEN 'minor' WHEN 1 THEN 'major' WHEN 2 THEN 'critical' ELSE 'minor' END AS severity,
+        60 + FLOOR(RAND() * 600) AS duration_seconds,
+        CASE FLOOR(RAND() * 3) WHEN 0 THEN 'voice' WHEN 1 THEN 'data' ELSE 'messaging' END AS impacted_service,
+        RAND() < 0.8 AS resolved_flag
+      FROM TABLE(GENERATOR(ROWCOUNT => 500)) AS seq
+      CROSS JOIN market_reference m
+      WHERE m.market_id = 1 + FLOOR(RAND() * 15)
+      LIMIT 500;
+    `);
+
+    // Generate care cases for last 30 days
+    await Query(config, `
+      INSERT INTO care_cases (subscriber_id, opened_ts, closed_ts, channel, issue_category, resolution_code, handle_time_seconds, escalation_flag, csat_score, related_service_issue_flag)
+      SELECT
+        1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
+        NOW(6) - INTERVAL FLOOR(RAND() * 720) HOUR AS opened_ts,
+        CASE WHEN RAND() < 0.7 THEN NOW(6) - INTERVAL FLOOR(RAND() * 600) HOUR ELSE NULL END AS closed_ts,
+        CASE FLOOR(RAND() * 4) WHEN 0 THEN 'phone' WHEN 1 THEN 'chat' WHEN 2 THEN 'email' ELSE 'store' END AS channel,
+        CASE FLOOR(RAND() * 5) WHEN 0 THEN 'network_quality' WHEN 1 THEN 'billing' WHEN 2 THEN 'device_support' WHEN 3 THEN 'plan_change' ELSE 'technical_support' END AS issue_category,
+        CASE WHEN RAND() < 0.7 THEN CASE FLOOR(RAND() * 3) WHEN 0 THEN 'resolved_service_issue' WHEN 1 THEN 'provided_troubleshooting' ELSE 'account_adjustment' END ELSE NULL END AS resolution_code,
+        300 + FLOOR(RAND() * 1800) AS handle_time_seconds,
+        RAND() < 0.1 AS escalation_flag,
+        CASE WHEN RAND() < 0.7 THEN 1 + FLOOR(RAND() * 5) ELSE NULL END AS csat_score,
+        RAND() < 0.3 AS related_service_issue_flag
+      FROM TABLE(GENERATOR(ROWCOUNT => 200)) AS seq;
+    `);
+
+    // Generate retention actions for last 30 days
+    await Query(config, `
+      INSERT INTO retention_actions (subscriber_id, action_ts, action_type, channel, reason_code, accepted_flag, conversion_flag, revenue_impact)
+      SELECT
+        1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
+        NOW(6) - INTERVAL FLOOR(RAND() * 720) HOUR AS action_ts,
+        CASE FLOOR(RAND() * 4) WHEN 0 THEN 'discount_offer' WHEN 1 THEN 'plan_upgrade' WHEN 2 THEN 'loyalty_credit' ELSE 'retention_call' END AS action_type,
+        CASE FLOOR(RAND() * 3) WHEN 0 THEN 'outbound_call' WHEN 1 THEN 'email' ELSE 'sms' END AS channel,
+        CASE FLOOR(RAND() * 3) WHEN 0 THEN 'churn_risk' WHEN 1 THEN 'competitive_offer' ELSE 'service_complaint' END AS reason_code,
+        RAND() < 0.35 AS accepted_flag,
+        RAND() < 0.25 AS conversion_flag,
+        -10.00 - (RAND() * 15.00) AS revenue_impact
+      FROM TABLE(GENERATOR(ROWCOUNT => 100)) AS seq;
+    `);
+
+    console.log('Demo data generated successfully');
+  } catch (error) {
+    console.warn('Failed to generate demo data:', error);
+    // Don't throw - this is optional
   }
 
-  // Start all pipelines
-  for (const startSQL of startPipelines) {
-    try {
-      console.log(`Starting pipeline: ${startSQL}`);
-      await Query(config, startSQL);
-    } catch (error) {
-      console.warn(`Failed to start pipeline:`, error);
-      // Don't throw - pipeline might already be running
-    }
-  }
+  // Skip S3 pipelines - they can be created manually if needed
+  // See PIPELINE_SETUP.md for instructions
+  console.log('Setup complete. To enable S3 pipeline ingestion, see PIPELINE_SETUP.md');
 };
 
 export const connectToDB = async (config: ConnectionConfig): Promise<boolean> => {

@@ -95,7 +95,7 @@ export const Configure: React.FC = () => {
       await resetSchema(config);
       toast({
         title: "Database setup successful",
-        description: "Database created with schema, procedures, and S3 pipelines. Data will start flowing in shortly!",
+        description: "Database created with 1,000 subscribers and demo data. Dashboard is ready to view!",
         status: "success",
         duration: 5000,
       });
