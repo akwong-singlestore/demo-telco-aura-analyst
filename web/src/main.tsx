@@ -1,4 +1,4 @@
-import { ChakraProvider, IToast, useToast } from "@chakra-ui/react";
+import { ChakraProvider, IToast, useToast, Spinner, Center } from "@chakra-ui/react";
 import * as React from "react";
 import ReactDOM from "react-dom";
 import { BrowserRouter } from "react-router-dom";
@@ -53,13 +53,17 @@ ReactDOM.render(
     <ChakraProvider theme={chakraTheme}>
       <ErrorBoundary>
         <RecoilRoot>
-          <BrowserRouter basename={import.meta.env.BASE_URL}>
-            <SWRWrapper>
-              <ClientErrorBoundary>
-                <App />
-              </ClientErrorBoundary>
-            </SWRWrapper>
-          </BrowserRouter>
+          <React.Suspense fallback={<Center h="100vh"><Spinner size="xl" /></Center>}>
+            <BrowserRouter basename={import.meta.env.BASE_URL}>
+              <SWRWrapper>
+                <ClientErrorBoundary>
+                  <React.Suspense fallback={<Center h="100vh"><Spinner size="xl" /></Center>}>
+                    <App />
+                  </React.Suspense>
+                </ClientErrorBoundary>
+              </SWRWrapper>
+            </BrowserRouter>
+          </React.Suspense>
         </RecoilRoot>
       </ErrorBoundary>
     </ChakraProvider>

@@ -106,7 +106,11 @@ const LayoutContainer = ({ children }: { children: React.ReactNode }) => {
   let childComponent = <Loader size="large" centered />;
 
   if (connected || !isValidatingConnection) {
-    childComponent = <>{children}</>;
+    childComponent = (
+      <React.Suspense fallback={<Center h="100%"><Spinner size="xl" /></Center>}>
+        {children}
+      </React.Suspense>
+    );
   }
 
   return (
