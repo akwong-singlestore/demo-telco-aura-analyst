@@ -505,13 +505,17 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
 
   streamingInterval = setInterval(async () => {
     try {
+      console.log('[Streaming] Generating new data...');
       // Get random subscriber IDs from existing subscribers
       const subscribers = await Query<{ subscriber_id: number; home_market_id: number }>(
         config,
         'SELECT subscriber_id, home_market_id FROM subscriber_master ORDER BY RAND() LIMIT 5'
       );
 
-      if (subscribers.length === 0) return;
+      if (subscribers.length === 0) {
+        console.log('[Streaming] No subscribers found');
+        return;
+      }
 
       // Generate new network events
       for (const sub of subscribers.slice(0, 3)) {
@@ -548,8 +552,13 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
               ${Math.random() < 0.8}
             );
           `);
+          console.log(`[Streaming] Inserted network event for subscriber ${sub.subscriber_id}`);
         }
       }
+
+      console.log('[Streaming] Data generation cycle complete');
+    } catch (error) {
+      console.error('[Streaming] Error:', error);
 
       // Occasionally generate care cases (30% chance)
       if (Math.random() < 0.3 && subscribers.length > 0) {
@@ -591,9 +600,6 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
         `);
       }
 
-    } catch (error) {
-      console.error('Streaming simulation error:', error);
-    }
   }, 3000); // Insert new data every 3 seconds
 };
 
