@@ -191,22 +191,59 @@ export const ExecutiveDashboard: React.FC = () => {
 
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={2}>Region</Text>
-            <Select size="sm" placeholder="All Regions" />
+            <Select size="sm" placeholder="All Regions">
+              <option value="">All Regions</option>
+              <option value="Southwest">Southwest</option>
+              <option value="South">South</option>
+              <option value="Southeast">Southeast</option>
+              <option value="Northwest">Northwest</option>
+              <option value="West">West</option>
+              <option value="Central">Central</option>
+              <option value="Mountain">Mountain</option>
+              <option value="Northeast">Northeast</option>
+            </Select>
           </Box>
 
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={2}>Market</Text>
-            <Select size="sm" placeholder="All Markets" />
+            <Select size="sm" placeholder="All Markets">
+              <option value="">All Markets</option>
+              <option value="Phoenix">Phoenix</option>
+              <option value="Dallas">Dallas</option>
+              <option value="Atlanta">Atlanta</option>
+              <option value="Seattle">Seattle</option>
+              <option value="Miami">Miami</option>
+              <option value="Denver">Denver</option>
+              <option value="Boston">Boston</option>
+              <option value="Las Vegas">Las Vegas</option>
+              <option value="Portland">Portland</option>
+              <option value="Austin">Austin</option>
+              <option value="Charlotte">Charlotte</option>
+              <option value="San Diego">San Diego</option>
+              <option value="Kansas City">Kansas City</option>
+              <option value="Columbus">Columbus</option>
+              <option value="Indianapolis">Indianapolis</option>
+            </Select>
           </Box>
 
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={2}>Line Type</Text>
-            <Select size="sm" placeholder="Postpaid, Prepaid" />
+            <Select size="sm" placeholder="All Line Types">
+              <option value="">All Line Types</option>
+              <option value="postpaid">Postpaid</option>
+              <option value="prepaid">Prepaid</option>
+              <option value="enterprise">Enterprise</option>
+            </Select>
           </Box>
 
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={2}>Technology</Text>
-            <Select size="sm" placeholder="5G, 4G LTE" />
+            <Select size="sm" placeholder="All Technologies">
+              <option value="">All Technologies</option>
+              <option value="5G">5G</option>
+              <option value="4G LTE">4G LTE</option>
+              <option value="Wi-Fi">Wi-Fi</option>
+            </Select>
           </Box>
 
           <Box>
