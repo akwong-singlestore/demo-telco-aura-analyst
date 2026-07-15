@@ -382,26 +382,31 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
     await Query(config, 'TRUNCATE TABLE subscriber_usage_summary;');
     await Query(config, 'TRUNCATE TABLE subscriber_master;');
 
-    // Create 1000 demo subscribers (using cross join for compatibility)
-    await Query(config, `
-      INSERT INTO subscriber_master (subscriber_id, account_id, line_type, tenure_days, plan_type, monthly_revenue, device_model, device_os, home_market_id, enterprise_account_id, churn_risk_band)
-      SELECT
-        1000000 + (m1.market_id * 100 + m2.market_id * 10 + cs.cell_site_id % 10) AS subscriber_id,
-        1000000 + (m1.market_id * 100 + m2.market_id * 10 + cs.cell_site_id % 10) AS account_id,
-        CASE WHEN RAND() < 0.6 THEN 'postpaid' WHEN RAND() < 0.9 THEN 'prepaid' ELSE 'enterprise' END AS line_type,
-        FLOOR(RAND() * 3650) AS tenure_days,
-        CASE WHEN RAND() < 0.3 THEN 'Unlimited Premium' WHEN RAND() < 0.6 THEN 'Unlimited Plus' ELSE 'Unlimited Basic' END AS plan_type,
-        45.00 + (RAND() * 155.00) AS monthly_revenue,
-        CASE FLOOR(RAND() * 5) WHEN 0 THEN 'iPhone 14' WHEN 1 THEN 'iPhone 13' WHEN 2 THEN 'Samsung Galaxy S23' WHEN 3 THEN 'Google Pixel 7' ELSE 'Samsung Galaxy A54' END AS device_model,
-        CASE FLOOR(RAND() * 2) WHEN 0 THEN 'iOS' ELSE 'Android' END AS device_os,
-        m1.market_id AS home_market_id,
-        NULL AS enterprise_account_id,
-        CASE WHEN RAND() < 0.65 THEN 'low' WHEN RAND() < 0.90 THEN 'medium' WHEN RAND() < 0.97 THEN 'high' ELSE 'critical' END AS churn_risk_band
-      FROM market_reference m1
-      CROSS JOIN market_reference m2
-      CROSS JOIN cell_sites cs
-      LIMIT 1000;
-    `);
+    // Create 1000 demo subscribers with unique sequential IDs
+    // Use a simple loop approach to guarantee unique IDs
+    const subscriberBatchSize = 50;
+    for (let batch = 0; batch < 20; batch++) {
+      const startId = 1000000 + (batch * subscriberBatchSize);
+      await Query(config, `
+        INSERT INTO subscriber_master (subscriber_id, account_id, line_type, tenure_days, plan_type, monthly_revenue, device_model, device_os, home_market_id, enterprise_account_id, churn_risk_band)
+        SELECT
+          ${startId} + (m.market_id * 3 + cs.cell_site_id % 3) AS subscriber_id,
+          ${startId} + (m.market_id * 3 + cs.cell_site_id % 3) AS account_id,
+          CASE WHEN RAND() < 0.6 THEN 'postpaid' WHEN RAND() < 0.9 THEN 'prepaid' ELSE 'enterprise' END AS line_type,
+          FLOOR(RAND() * 3650) AS tenure_days,
+          CASE WHEN RAND() < 0.3 THEN 'Unlimited Premium' WHEN RAND() < 0.6 THEN 'Unlimited Plus' ELSE 'Unlimited Basic' END AS plan_type,
+          45.00 + (RAND() * 155.00) AS monthly_revenue,
+          CASE FLOOR(RAND() * 5) WHEN 0 THEN 'iPhone 14' WHEN 1 THEN 'iPhone 13' WHEN 2 THEN 'Samsung Galaxy S23' WHEN 3 THEN 'Google Pixel 7' ELSE 'Samsung Galaxy A54' END AS device_model,
+          CASE FLOOR(RAND() * 2) WHEN 0 THEN 'iOS' ELSE 'Android' END AS device_os,
+          m.market_id AS home_market_id,
+          NULL AS enterprise_account_id,
+          CASE WHEN RAND() < 0.65 THEN 'low' WHEN RAND() < 0.90 THEN 'medium' WHEN RAND() < 0.97 THEN 'high' ELSE 'critical' END AS churn_risk_band
+        FROM market_reference m
+        CROSS JOIN cell_sites cs
+        WHERE m.market_id = cs.market_id
+        LIMIT ${subscriberBatchSize};
+      `);
+    }
 
     // Generate network events spread across last 7 days (evenly distributed)
     // Create events at different time intervals to make time-range filtering meaningful
