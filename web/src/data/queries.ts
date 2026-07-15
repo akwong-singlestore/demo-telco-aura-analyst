@@ -62,7 +62,7 @@ export const getExecutiveKPIs = async (config: ConnectionConfig, window: string)
     config,
     `SELECT
       (SELECT COUNT(*) FROM subscriber_master) as total_subscribers,
-      (SELECT COUNT(*) FROM subscriber_master WHERE churn_risk_band = 'high') as high_risk_subscribers,
+      (SELECT COUNT(DISTINCT subscriber_id) FROM network_experience_events WHERE event_ts > NOW(6) - INTERVAL ${interval}) as high_risk_subscribers,
       (SELECT COUNT(*) FROM subscriber_master WHERE churn_risk_band = 'critical') as critical_risk_subscribers,
       (SELECT AVG(experience_score) FROM subscriber_experience_scores) as avg_experience_score,
       (SELECT COUNT(*) FROM care_cases WHERE opened_ts > NOW(6) - INTERVAL ${interval}) as care_cases_24h,

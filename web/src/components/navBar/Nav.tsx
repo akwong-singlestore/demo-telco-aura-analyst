@@ -45,9 +45,10 @@ export const Nav: React.FC = () => {
     setIsRefreshing(true);
     try {
       // Revalidate all SWR caches to fetch fresh data
-      await mutate(() => true);
+      await mutate(() => true, undefined, { revalidate: true });
+      console.log('[Refresh] Cache invalidated, revalidating all queries');
     } finally {
-      setTimeout(() => setIsRefreshing(false), 500);
+      setTimeout(() => setIsRefreshing(false), 1000);
     }
   };
 
