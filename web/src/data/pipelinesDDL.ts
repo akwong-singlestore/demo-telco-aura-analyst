@@ -9,6 +9,17 @@ AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/network_events.*'
 CONFIG '{"region": "us-east-1"}'
 SKIP DUPLICATE KEY ERRORS
 INTO PROCEDURE process_network_events
+(
+  subscriber_id,
+  cell_site_id,
+  market_id,
+  region_name,
+  technology_type,
+  event_type,
+  severity,
+  duration_seconds,
+  impacted_service
+)
 FORMAT PARQUET;`
   },
   {
@@ -18,6 +29,17 @@ AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/usage_summary.*'
 CONFIG '{"region": "us-east-1"}'
 SKIP DUPLICATE KEY ERRORS
 INTO PROCEDURE process_usage_summary
+(
+  subscriber_id,
+  cell_site_id,
+  market_id,
+  session_count,
+  data_mb,
+  voice_minutes,
+  dropped_sessions,
+  avg_session_latency_ms,
+  qos_score
+)
 FORMAT PARQUET;`
   },
   {
@@ -27,6 +49,12 @@ AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/care_cases.*'
 CONFIG '{"region": "us-east-1"}'
 SKIP DUPLICATE KEY ERRORS
 INTO PROCEDURE process_care_cases
+(
+  subscriber_id,
+  channel,
+  issue_category,
+  related_service_issue_flag
+)
 FORMAT PARQUET;`
   },
   {
@@ -36,6 +64,15 @@ AS LOAD DATA S3 's2-telco-aura-demo/v1/1k-2p/retention_actions.*'
 CONFIG '{"region": "us-east-1"}'
 SKIP DUPLICATE KEY ERRORS
 INTO PROCEDURE process_retention_actions
+(
+  subscriber_id,
+  action_type,
+  channel,
+  reason_code,
+  accepted_flag,
+  conversion_flag,
+  revenue_impact
+)
 FORMAT PARQUET;`
   }
 ];
