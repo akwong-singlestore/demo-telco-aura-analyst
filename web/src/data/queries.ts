@@ -600,6 +600,10 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
         `);
       }
 
+      console.log('[Streaming] Data generation cycle complete');
+    } catch (error) {
+      console.error('[Streaming] Error:', error);
+    }
   }, 3000); // Insert new data every 3 seconds
 };
 
