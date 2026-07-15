@@ -4,7 +4,7 @@ import { connectionConfig, timeWindow } from "./recoil";
 import { Query, QueryNoDb, ConnectionConfig, Row } from "./client";
 import schemaStatements from "../../sql/schema.sql";
 import seedStatements from "../../sql/seed.sql";
-import procedureStatements from "../../sql/procedures.sql";
+import { proceduresDDL } from "./proceduresDDL";
 
 // Helper to convert time window string to SQL INTERVAL
 const timeWindowToInterval = (window: string): string => {
@@ -358,9 +358,17 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
     }
   }
 
-  // Skip procedures - they are complex and cause parsing issues
-  // Users can manually run: SOURCE procedures.sql; if they need stored procedures
-  console.log('Skipping stored procedures - run procedures.sql manually if needed');
+  // Execute procedures (now embedded in TypeScript, no parsing needed)
+  for (const proc of proceduresDDL) {
+    try {
+      console.log(`Creating procedure: ${proc.name}`);
+      await Query(config, proc.sql);
+    } catch (error) {
+      console.error(`Failed to create procedure ${proc.name}:`, error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to create procedure ${proc.name}: ${errorMsg}`);
+    }
+  }
 };
 
 export const connectToDB = async (config: ConnectionConfig): Promise<boolean> => {

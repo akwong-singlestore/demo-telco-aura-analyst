@@ -208,20 +208,8 @@ export const Configure: React.FC = () => {
         >
           <Heading size="md" mb={4}>Database Setup</Heading>
           <Text color="gray.600" mb={4}>
-            Create and populate the telco database with schema and seed data.
+            Create and populate the telco database with schema, seed data, and stored procedures.
           </Text>
-          {schemaStatus && Object.keys(schemaStatus).filter(k => k.startsWith('process_')).some(k => !schemaStatus[k]) && (
-            <Alert status="info" mb={4} fontSize="sm">
-              <AlertIcon />
-              <Box>
-                <AlertTitle>Note:</AlertTitle>
-                <AlertDescription>
-                  Stored procedures must be created manually. After setup, run in SQL Editor:<br/>
-                  <Text as="code" fontSize="xs">SOURCE procedures.sql;</Text>
-                </AlertDescription>
-              </Box>
-            </Alert>
-          )}
 
           <Stack spacing={4}>
             <HStack spacing={4}>
