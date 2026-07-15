@@ -375,22 +375,25 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
   try {
     console.log('Generating demo subscriber data...');
 
-    // Create 1000 demo subscribers
+    // Create 1000 demo subscribers (using cross join for compatibility)
     await Query(config, `
       INSERT INTO subscriber_master (subscriber_id, account_id, line_type, tenure_days, plan_type, monthly_revenue, device_model, device_os, home_market_id, enterprise_account_id, churn_risk_band)
       SELECT
-        1000000 + seq AS subscriber_id,
-        1000000 + seq AS account_id,
+        1000000 + (m1.market_id * 100 + m2.market_id * 10 + cs.cell_site_id % 10) AS subscriber_id,
+        1000000 + (m1.market_id * 100 + m2.market_id * 10 + cs.cell_site_id % 10) AS account_id,
         CASE WHEN RAND() < 0.6 THEN 'postpaid' WHEN RAND() < 0.9 THEN 'prepaid' ELSE 'enterprise' END AS line_type,
         FLOOR(RAND() * 3650) AS tenure_days,
         CASE WHEN RAND() < 0.3 THEN 'Unlimited Premium' WHEN RAND() < 0.6 THEN 'Unlimited Plus' ELSE 'Unlimited Basic' END AS plan_type,
         45.00 + (RAND() * 155.00) AS monthly_revenue,
         CASE FLOOR(RAND() * 5) WHEN 0 THEN 'iPhone 14' WHEN 1 THEN 'iPhone 13' WHEN 2 THEN 'Samsung Galaxy S23' WHEN 3 THEN 'Google Pixel 7' ELSE 'Samsung Galaxy A54' END AS device_model,
         CASE FLOOR(RAND() * 2) WHEN 0 THEN 'iOS' ELSE 'Android' END AS device_os,
-        1 + FLOOR(RAND() * 15) AS home_market_id,
+        m1.market_id AS home_market_id,
         NULL AS enterprise_account_id,
         CASE WHEN RAND() < 0.65 THEN 'low' WHEN RAND() < 0.90 THEN 'medium' WHEN RAND() < 0.97 THEN 'high' ELSE 'critical' END AS churn_risk_band
-      FROM TABLE(GENERATOR(ROWCOUNT => 1000)) AS seq;
+      FROM market_reference m1
+      CROSS JOIN market_reference m2
+      CROSS JOIN cell_sites cs
+      LIMIT 1000;
     `);
 
     // Generate network events for last 7 days
@@ -399,8 +402,8 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
       SELECT
         NOW(6) - INTERVAL FLOOR(RAND() * 168) HOUR AS event_ts,
         1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
-        1000 + FLOOR(RAND() * 50) AS cell_site_id,
-        1 + FLOOR(RAND() * 15) AS market_id,
+        cs.cell_site_id,
+        m.market_id,
         m.region_name,
         CASE FLOOR(RAND() * 3) WHEN 0 THEN '5G' WHEN 1 THEN '4G LTE' ELSE 'Wi-Fi' END AS technology_type,
         CASE FLOOR(RAND() * 5) WHEN 0 THEN 'call_drop' WHEN 1 THEN 'slow_data' WHEN 2 THEN 'no_service' WHEN 3 THEN 'high_latency' ELSE 'poor_quality' END AS event_type,
@@ -408,9 +411,9 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
         60 + FLOOR(RAND() * 600) AS duration_seconds,
         CASE FLOOR(RAND() * 3) WHEN 0 THEN 'voice' WHEN 1 THEN 'data' ELSE 'messaging' END AS impacted_service,
         RAND() < 0.8 AS resolved_flag
-      FROM TABLE(GENERATOR(ROWCOUNT => 500)) AS seq
-      CROSS JOIN market_reference m
-      WHERE m.market_id = 1 + FLOOR(RAND() * 15)
+      FROM market_reference m
+      CROSS JOIN cell_sites cs
+      WHERE m.market_id = cs.market_id
       LIMIT 500;
     `);
 
@@ -428,7 +431,9 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
         RAND() < 0.1 AS escalation_flag,
         CASE WHEN RAND() < 0.7 THEN 1 + FLOOR(RAND() * 5) ELSE NULL END AS csat_score,
         RAND() < 0.3 AS related_service_issue_flag
-      FROM TABLE(GENERATOR(ROWCOUNT => 200)) AS seq;
+      FROM market_reference m1
+      CROSS JOIN market_reference m2
+      LIMIT 200;
     `);
 
     // Generate retention actions for last 30 days
@@ -443,7 +448,10 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
         RAND() < 0.35 AS accepted_flag,
         RAND() < 0.25 AS conversion_flag,
         -10.00 - (RAND() * 15.00) AS revenue_impact
-      FROM TABLE(GENERATOR(ROWCOUNT => 100)) AS seq;
+      FROM market_reference m1
+      CROSS JOIN market_reference m2
+      WHERE m1.market_id <= 7
+      LIMIT 100;
     `);
 
     console.log('Demo data generated successfully');
