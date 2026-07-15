@@ -7,6 +7,7 @@ import {
   Text,
   useColorModeValue,
   useToast,
+  Spinner,
 } from "@chakra-ui/react";
 import * as React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
@@ -127,7 +128,9 @@ const RoutesBlock = () => {
         path="/dashboard"
         element={
           <PrivateRoute>
-            <ExecutiveDashboard />
+            <React.Suspense fallback={<Center h="100vh"><Spinner size="xl" /></Center>}>
+              <ExecutiveDashboard />
+            </React.Suspense>
           </PrivateRoute>
         }
       />

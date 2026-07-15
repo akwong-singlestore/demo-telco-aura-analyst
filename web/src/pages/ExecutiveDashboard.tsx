@@ -90,6 +90,10 @@ export const ExecutiveDashboard: React.FC = () => {
   const [showFilters, setShowFilters] = React.useState(false);
   const [showAura, setShowAura] = React.useState(false);
   const [marketSortBy, setMarketSortBy] = React.useState<'degraded' | 'care' | 'churn'>('degraded');
+  const [selectedRegion, setSelectedRegion] = React.useState<string>("");
+  const [selectedMarket, setSelectedMarket] = React.useState<string>("");
+  const [selectedLineType, setSelectedLineType] = React.useState<string>("");
+  const [selectedTechnology, setSelectedTechnology] = React.useState<string>("");
   const setPendingQuestion = useSetRecoilState(analystPendingQuestion);
   const setChatOpen = useSetRecoilState(analystChatOpen);
   const [selectedTimeWindow, setSelectedTimeWindow] = useRecoilState(timeWindow);
@@ -127,6 +131,33 @@ export const ExecutiveDashboard: React.FC = () => {
   const formatPercent = (num: number | undefined) => {
     if (num === undefined) return "—%";
     return `${num.toFixed(1)}%`;
+  };
+
+  // Apply filters to markets data
+  const filteredMarkets = React.useMemo(() => {
+    if (!markets) return markets;
+    return markets.filter(m => {
+      if (selectedRegion && m.region_name !== selectedRegion) return false;
+      if (selectedMarket && m.market_name !== selectedMarket) return false;
+      return true;
+    });
+  }, [markets, selectedRegion, selectedMarket]);
+
+  // Apply filters to at-risk subscribers
+  const filteredAtRisk = React.useMemo(() => {
+    if (!atRisk) return atRisk;
+    return atRisk.filter(sub => {
+      if (selectedLineType && sub.line_type !== selectedLineType) return false;
+      return true;
+    });
+  }, [atRisk, selectedLineType]);
+
+  // Reset filters handler
+  const handleResetFilters = () => {
+    setSelectedRegion("");
+    setSelectedMarket("");
+    setSelectedLineType("");
+    setSelectedTechnology("");
   };
 
   return (
@@ -176,7 +207,7 @@ export const ExecutiveDashboard: React.FC = () => {
           <Flex justify="space-between" align="center">
             <Heading size="sm">Filters</Heading>
             <HStack spacing={1}>
-              <Button size="xs" variant="ghost" colorScheme="blue">
+              <Button size="xs" variant="ghost" colorScheme="blue" onClick={handleResetFilters}>
                 Reset
               </Button>
               <IconButton
@@ -191,7 +222,12 @@ export const ExecutiveDashboard: React.FC = () => {
 
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={2}>Region</Text>
-            <Select size="sm" placeholder="All Regions">
+            <Select
+              size="sm"
+              placeholder="All Regions"
+              value={selectedRegion}
+              onChange={(e) => setSelectedRegion(e.target.value)}
+            >
               <option value="">All Regions</option>
               <option value="Southwest">Southwest</option>
               <option value="South">South</option>
@@ -206,7 +242,12 @@ export const ExecutiveDashboard: React.FC = () => {
 
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={2}>Market</Text>
-            <Select size="sm" placeholder="All Markets">
+            <Select
+              size="sm"
+              placeholder="All Markets"
+              value={selectedMarket}
+              onChange={(e) => setSelectedMarket(e.target.value)}
+            >
               <option value="">All Markets</option>
               <option value="Phoenix">Phoenix</option>
               <option value="Dallas">Dallas</option>
@@ -228,7 +269,12 @@ export const ExecutiveDashboard: React.FC = () => {
 
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={2}>Line Type</Text>
-            <Select size="sm" placeholder="All Line Types">
+            <Select
+              size="sm"
+              placeholder="All Line Types"
+              value={selectedLineType}
+              onChange={(e) => setSelectedLineType(e.target.value)}
+            >
               <option value="">All Line Types</option>
               <option value="postpaid">Postpaid</option>
               <option value="prepaid">Prepaid</option>
@@ -238,7 +284,12 @@ export const ExecutiveDashboard: React.FC = () => {
 
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={2}>Technology</Text>
-            <Select size="sm" placeholder="All Technologies">
+            <Select
+              size="sm"
+              placeholder="All Technologies"
+              value={selectedTechnology}
+              onChange={(e) => setSelectedTechnology(e.target.value)}
+            >
               <option value="">All Technologies</option>
               <option value="5G">5G</option>
               <option value="4G LTE">4G LTE</option>
@@ -340,7 +391,7 @@ export const ExecutiveDashboard: React.FC = () => {
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {markets?.sort((a, b) => {
+                  {filteredMarkets?.sort((a, b) => {
                     if (marketSortBy === 'care') {
                       return (b.care_cases_24h || 0) - (a.care_cases_24h || 0);
                     } else if (marketSortBy === 'churn') {
@@ -465,7 +516,7 @@ export const ExecutiveDashboard: React.FC = () => {
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {atRisk?.slice(0, 5).map((sub) => {
+                    {filteredAtRisk?.slice(0, 5).map((sub) => {
                       const revenue = Number(sub.monthly_revenue) || 0;
                       return (
                         <Tr key={sub.subscriber_id}>
