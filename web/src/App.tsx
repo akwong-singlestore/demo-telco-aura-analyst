@@ -115,7 +115,6 @@ const LayoutContainer = ({ children }: { children: React.ReactNode }) => {
         {childComponent}
       </Box>
       <Footer />
-      {connected && <AnalystChat />}
     </>
   );
 };
@@ -146,6 +145,7 @@ const RoutesBlock = () => {
 };
 
 const App = () => {
+  const { connected } = useConnectionState();
   const loadingFallback = (
     <Center height="100vh">
       <Loader size="large" centered />
@@ -157,6 +157,8 @@ const App = () => {
       <Flex height="100vh" width="100vw" direction="column" overflowY="auto">
         <RoutesBlock />
       </Flex>
+      {/* Render AnalystChat at top level so it never unmounts during navigation */}
+      {connected && <AnalystChat />}
     </React.Suspense>
   );
 };
