@@ -89,6 +89,7 @@ const KPICard: React.FC<{
 export const ExecutiveDashboard: React.FC = () => {
   const [showFilters, setShowFilters] = React.useState(false);
   const [showAura, setShowAura] = React.useState(false);
+  const [marketSortBy, setMarketSortBy] = React.useState<'degraded' | 'care' | 'churn'>('degraded');
   const setPendingQuestion = useSetRecoilState(analystPendingQuestion);
   const setChatOpen = useSetRecoilState(analystChatOpen);
   const [selectedTimeWindow, setSelectedTimeWindow] = useRecoilState(timeWindow);
@@ -275,7 +276,12 @@ export const ExecutiveDashboard: React.FC = () => {
             <Flex justify="space-between" align="center" mb={4}>
               <Heading size="md">Market Degradation Summary</Heading>
               <HStack>
-                <Select size="sm" w="auto" defaultValue="degraded">
+                <Select
+                  size="sm"
+                  w="auto"
+                  value={marketSortBy}
+                  onChange={(e) => setMarketSortBy(e.target.value as 'degraded' | 'care' | 'churn')}
+                >
                   <option value="degraded">Degraded Experience</option>
                   <option value="care">Care Volume</option>
                   <option value="churn">Churn Risk</option>
@@ -290,14 +296,22 @@ export const ExecutiveDashboard: React.FC = () => {
                   <Tr>
                     <Th>Market</Th>
                     <Th>Region</Th>
-                    <Th isNumeric>Degradation Index</Th>
+                    <Th isNumeric fontWeight={marketSortBy === 'degraded' ? 'bold' : 'normal'}>Degradation Index</Th>
                     <Th isNumeric>Severe Events (24h)</Th>
-                    <Th isNumeric>Impacted Subs</Th>
-                    <Th isNumeric>Care Cases</Th>
+                    <Th isNumeric fontWeight={marketSortBy === 'churn' ? 'bold' : 'normal'}>Impacted Subs</Th>
+                    <Th isNumeric fontWeight={marketSortBy === 'care' ? 'bold' : 'normal'}>Care Cases</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {markets?.slice(0, 10).map((m) => {
+                  {markets?.sort((a, b) => {
+                    if (marketSortBy === 'care') {
+                      return (b.care_cases_24h || 0) - (a.care_cases_24h || 0);
+                    } else if (marketSortBy === 'churn') {
+                      return (b.impacted_subscribers_24h || 0) - (a.impacted_subscribers_24h || 0);
+                    } else {
+                      return (b.degradation_index || 0) - (a.degradation_index || 0);
+                    }
+                  }).slice(0, 10).map((m) => {
                     const degIndex = Number(m.degradation_index) || 0;
                     return (
                       <Tr key={m.market_id}>
