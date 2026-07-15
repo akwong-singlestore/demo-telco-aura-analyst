@@ -5,6 +5,7 @@ import { Query, QueryNoDb, ConnectionConfig, Row } from "./client";
 import schemaStatements from "../../sql/schema.sql";
 import seedStatements from "../../sql/seed.sql";
 import { proceduresDDL } from "./proceduresDDL";
+import { pipelinesDDL, startPipelines } from "./pipelinesDDL";
 
 // Helper to convert time window string to SQL INTERVAL
 const timeWindowToInterval = (window: string): string => {
@@ -367,6 +368,29 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
       console.error(`Failed to create procedure ${proc.name}:`, error);
       const errorMsg = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to create procedure ${proc.name}: ${errorMsg}`);
+    }
+  }
+
+  // Create and start S3 pipelines to ingest demo data
+  for (const pipeline of pipelinesDDL) {
+    try {
+      console.log(`Creating pipeline: ${pipeline.name}`);
+      await Query(config, pipeline.sql);
+    } catch (error) {
+      console.error(`Failed to create pipeline ${pipeline.name}:`, error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to create pipeline ${pipeline.name}: ${errorMsg}`);
+    }
+  }
+
+  // Start all pipelines
+  for (const startSQL of startPipelines) {
+    try {
+      console.log(`Starting pipeline: ${startSQL}`);
+      await Query(config, startSQL);
+    } catch (error) {
+      console.warn(`Failed to start pipeline:`, error);
+      // Don't throw - pipeline might already be running
     }
   }
 };
