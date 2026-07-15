@@ -53,6 +53,7 @@ export const Configure: React.FC = () => {
   const [schemaStatus, setSchemaStatus] = React.useState<{ [key: string]: boolean } | null>(null);
   const [isCheckingSchema, setIsCheckingSchema] = React.useState(false);
   const [isResettingSchema, setIsResettingSchema] = React.useState(false);
+  const [configSaved, setConfigSaved] = React.useState(false);
 
   const toast = useToast();
   const bgColor = useColorModeValue("white", "gray.800");
@@ -94,7 +95,7 @@ export const Configure: React.FC = () => {
       await resetSchema(config);
       toast({
         title: "Database setup successful",
-        description: "Database has been created and populated with schema, seed data, and procedures",
+        description: "Database has been created and populated with schema and seed data",
         status: "success",
         duration: 5000,
       });
@@ -110,6 +111,26 @@ export const Configure: React.FC = () => {
       setIsResettingSchema(false);
     }
   };
+
+  const handleSaveConfig = () => {
+    setConfigSaved(true);
+    toast({
+      title: "Configuration saved",
+      description: "Your database and Aura Analyst settings have been saved",
+      status: "success",
+      duration: 3000,
+    });
+
+    // Reset the saved state after 3 seconds
+    setTimeout(() => {
+      setConfigSaved(false);
+    }, 3000);
+  };
+
+  // Track if any config values change to re-enable the save button
+  React.useEffect(() => {
+    setConfigSaved(false);
+  }, [host, user, password, database, apiKey, endpointUrl]);
 
   return (
     <Container maxW="container.lg" py={10}>
@@ -303,8 +324,14 @@ export const Configure: React.FC = () => {
         </Box>
 
         <Flex justify="flex-end">
-          <Button colorScheme="blue" size="lg">
-            Save Configuration
+          <Button
+            colorScheme={configSaved ? "gray" : "blue"}
+            size="lg"
+            onClick={handleSaveConfig}
+            isDisabled={configSaved}
+            leftIcon={configSaved ? <CheckCircleIcon /> : undefined}
+          >
+            {configSaved ? "Configuration Saved" : "Save Configuration"}
           </Button>
         </Flex>
       </VStack>
