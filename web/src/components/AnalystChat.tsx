@@ -157,10 +157,14 @@ export const AnalystChat: React.FC = () => {
   // Handle pending questions from external triggers (e.g., Ask Aura buttons)
   React.useEffect(() => {
     if (pendingQuestion && !isLoading && !isProcessingRef.current && apiKey && endpointUrl) {
-      handleSend(pendingQuestion).then((sent) => {
-        // Only clear pending question if message was actually sent
-        if (sent) {
-          setPendingQuestion(null);
+      const questionToSend = pendingQuestion;
+      // Clear pending question immediately to prevent re-sending on re-render
+      setPendingQuestion(null);
+
+      handleSend(questionToSend).then((sent) => {
+        // If send failed, restore the pending question
+        if (!sent) {
+          setPendingQuestion(questionToSend);
         }
       });
     }
