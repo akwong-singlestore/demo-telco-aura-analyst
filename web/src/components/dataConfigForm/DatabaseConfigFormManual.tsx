@@ -73,8 +73,8 @@ export const DatabaseConfigFormManual = ({
   if (showDatabase) {
     databaseInput = (
       <ConfigInput
-        label="Martech Database Name"
-        placeholder="martech"
+        label="Telco Database Name"
+        placeholder="telco"
         required
         value={localDatabase}
         setValue={setLocalDatabase}

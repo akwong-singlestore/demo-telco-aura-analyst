@@ -28,8 +28,8 @@ export const DatabaseConfigForm = ({
   if (showDatabase) {
     databaseInput = (
       <ConfigInput
-        label="Martech Database Name"
-        placeholder="martech"
+        label="Telco Database Name"
+        placeholder="telco"
         value={database}
         setValue={setDatabase}
       />
