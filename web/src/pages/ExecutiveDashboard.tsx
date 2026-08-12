@@ -38,7 +38,8 @@ import {
   useMarketHealth,
   useAtRiskSubscribers,
   useInterventionPerformance,
-  useChurnRiskTrend
+  useChurnRiskTrend,
+  useIngestionRate
 } from "@/data/queries";
 import { analystPendingQuestion, analystChatOpen, timeWindow } from "@/data/recoil";
 
@@ -94,6 +95,7 @@ export const ExecutiveDashboard: React.FC = () => {
   const [selectedMarket, setSelectedMarket] = React.useState<string>("");
   const [selectedLineType, setSelectedLineType] = React.useState<string>("");
   const [selectedTechnology, setSelectedTechnology] = React.useState<string>("");
+  const [lastUpdateTime, setLastUpdateTime] = React.useState<Date>(new Date());
   const setPendingQuestion = useSetRecoilState(analystPendingQuestion);
   const setChatOpen = useSetRecoilState(analystChatOpen);
   const [selectedTimeWindow, setSelectedTimeWindow] = useRecoilState(timeWindow);
@@ -103,18 +105,27 @@ export const ExecutiveDashboard: React.FC = () => {
   const atRiskRes = useAtRiskSubscribers();
   const interventionsRes = useInterventionPerformance();
   const churnTrendRes = useChurnRiskTrend();
+  const ingestionRes = useIngestionRate();
 
   const kpis = kpisRes.data;
   const markets = marketsRes.data;
   const atRisk = atRiskRes.data;
   const interventions = interventionsRes.data;
   const churnTrend = churnTrendRes.data;
+  const ingestion = ingestionRes.data;
 
   const kpisLoading = !kpisRes.data && !kpisRes.error;
   const marketsLoading = !marketsRes.data && !marketsRes.error;
   const atRiskLoading = !atRiskRes.data && !atRiskRes.error;
   const interventionsLoading = !interventionsRes.data && !interventionsRes.error;
   const trendLoading = !churnTrendRes.data && !churnTrendRes.error;
+
+  // Update timestamp when data refreshes
+  React.useEffect(() => {
+    if (kpis || markets) {
+      setLastUpdateTime(new Date());
+    }
+  }, [kpis, markets]);
 
   const bgColor = useColorModeValue("gray.50", "gray.900");
   const cardBg = useColorModeValue("white", "gray.800");
@@ -304,6 +315,8 @@ export const ExecutiveDashboard: React.FC = () => {
               value={selectedTimeWindow}
               onChange={(e) => setSelectedTimeWindow(e.target.value)}
             >
+              <option value="5m">Last 5 minutes</option>
+              <option value="15m">Last 15 minutes</option>
               <option value="1h">Last 1 hour</option>
               <option value="2h">Last 2 hours</option>
               <option value="24h">Last 24 hours</option>
@@ -316,6 +329,50 @@ export const ExecutiveDashboard: React.FC = () => {
       {/* Main Content */}
       <Flex flex={1} direction="column" overflow="auto">
         <Container maxW="100%" py={6} px={8}>
+          {/* Live Indicator Header */}
+          <Flex justify="space-between" align="center" mb={4}>
+            <HStack spacing={3}>
+              <Badge
+                colorScheme="green"
+                fontSize="sm"
+                px={3}
+                py={1}
+                borderRadius="md"
+                display="flex"
+                alignItems="center"
+                gap={2}
+              >
+                <Box
+                  as="span"
+                  display="inline-block"
+                  w="8px"
+                  h="8px"
+                  borderRadius="50%"
+                  bg="green.400"
+                  animation="pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite"
+                  sx={{
+                    "@keyframes pulse": {
+                      "0%, 100%": { opacity: 1 },
+                      "50%": { opacity: 0.5 },
+                    },
+                  }}
+                />
+                LIVE
+              </Badge>
+              <Text fontSize="sm" color="gray.500">
+                Last updated: {lastUpdateTime.toLocaleTimeString()}
+              </Text>
+              {ingestion && (
+                <Text fontSize="sm" color="gray.500">
+                  • Events ingested (60s): <Text as="span" fontWeight="bold" color="blue.500">{ingestion.events_last_60s}</Text>
+                  {ingestion.events_per_second > 0 && (
+                    <Text as="span" ml={1}>({ingestion.events_per_second}/sec)</Text>
+                  )}
+                </Text>
+              )}
+            </HStack>
+          </Flex>
+
           {/* KPI Cards */}
           <Grid templateColumns="repeat(4, 1fr)" gap={4} mb={6}>
             <KPICard

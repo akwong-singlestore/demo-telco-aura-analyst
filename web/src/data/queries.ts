@@ -7,9 +7,14 @@ import seedStatements from "../../sql/seed.sql";
 import { proceduresDDL } from "./proceduresDDL";
 import { pipelinesDDL, startPipelines } from "./pipelinesDDL";
 
+// Configurable poll interval (default 5 seconds)
+const POLL_INTERVAL_MS = parseInt(import.meta.env.VITE_POLL_INTERVAL_MS || "5000");
+
 // Helper to convert time window string to SQL INTERVAL
 const timeWindowToInterval = (window: string): string => {
   switch (window) {
+    case "5m": return "5 MINUTE";
+    case "15m": return "15 MINUTE";
     case "1h": return "1 HOUR";
     case "2h": return "2 HOUR";
     case "24h": return "24 HOUR";
@@ -40,7 +45,7 @@ export const getMarketHealth = async (config: ConnectionConfig): Promise<Market[
 export const useMarketHealth = () => {
   const config = useRecoilValue(connectionConfig);
   return useSWR(["market_health", config], () => getMarketHealth(config), {
-    refreshInterval: 5000,
+    refreshInterval: POLL_INTERVAL_MS,
   });
 };
 
@@ -77,7 +82,32 @@ export const useExecutiveKPIs = () => {
   const config = useRecoilValue(connectionConfig);
   const window = useRecoilValue(timeWindow);
   return useSWR(["executive_kpis", config, window], () => getExecutiveKPIs(config, window), {
-    refreshInterval: 10000,
+    refreshInterval: POLL_INTERVAL_MS,
+  });
+};
+
+// Ingestion rate (events in last 60 seconds)
+export interface IngestionRate {
+  events_last_60s: number;
+  events_per_second: number;
+}
+
+export const getIngestionRate = async (config: ConnectionConfig): Promise<IngestionRate> => {
+  const result = await Query<{ count: number }>(
+    config,
+    `SELECT COUNT(*) as count FROM network_experience_events WHERE event_ts > NOW(6) - INTERVAL 60 SECOND`
+  );
+  const count = result[0]?.count || 0;
+  return {
+    events_last_60s: count,
+    events_per_second: parseFloat((count / 60).toFixed(1)),
+  };
+};
+
+export const useIngestionRate = () => {
+  const config = useRecoilValue(connectionConfig);
+  return useSWR(["ingestion_rate", config], () => getIngestionRate(config), {
+    refreshInterval: POLL_INTERVAL_MS,
   });
 };
 
@@ -109,7 +139,7 @@ export const getAtRiskSubscribers = async (config: ConnectionConfig): Promise<At
 export const useAtRiskSubscribers = () => {
   const config = useRecoilValue(connectionConfig);
   return useSWR(["at_risk_subscribers", config], () => getAtRiskSubscribers(config), {
-    refreshInterval: 10000,
+    refreshInterval: POLL_INTERVAL_MS * 2,
   });
 };
 
@@ -211,7 +241,7 @@ export const useRecentNetworkEvents = (limit: number = 100) => {
   const config = useRecoilValue(connectionConfig);
   const window = useRecoilValue(timeWindow);
   return useSWR(["recent_network_events", config, window, limit], () => getRecentNetworkEvents(config, window, limit), {
-    refreshInterval: 5000,
+    refreshInterval: POLL_INTERVAL_MS,
   });
 };
 
