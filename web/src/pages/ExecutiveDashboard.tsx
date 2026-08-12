@@ -27,8 +27,9 @@ import {
   Spinner,
   IconButton,
   Collapse,
+  Tooltip,
 } from "@chakra-ui/react";
-import { MdPeople, MdWarning, MdHeadset, MdTrendingUp, MdFilterList, MdClose, MdChat } from "react-icons/md";
+import { MdPeople, MdWarning, MdHeadset, MdTrendingUp, MdFilterList, MdClose, MdChat, MdInfoOutline } from "react-icons/md";
 import * as React from "react";
 import { useSetRecoilState, useRecoilState } from "recoil";
 import Plotly from "plotly.js-dist-min";
@@ -503,7 +504,20 @@ export const ExecutiveDashboard: React.FC = () => {
                   <Tr>
                     <Th>Market</Th>
                     <Th>Region</Th>
-                    <Th isNumeric fontWeight={marketSortBy === 'degraded' ? 'bold' : 'normal'}>Degradation Index</Th>
+                    <Th isNumeric fontWeight={marketSortBy === 'degraded' ? 'bold' : 'normal'}>
+                      <HStack spacing={1} justify="flex-end">
+                        <Text>Degradation Index</Text>
+                        <Tooltip
+                          label="Composite score (0-100) based on severe network events, impacted subscribers, and experience scores. Higher values indicate worse service quality."
+                          fontSize="xs"
+                          hasArrow
+                        >
+                          <span>
+                            <Icon as={MdInfoOutline} boxSize={3} color="gray.400" cursor="help" />
+                          </span>
+                        </Tooltip>
+                      </HStack>
+                    </Th>
                     <Th isNumeric>Severe Events (24h)</Th>
                     <Th isNumeric fontWeight={marketSortBy === 'churn' ? 'bold' : 'normal'}>Impacted Subs</Th>
                     <Th isNumeric fontWeight={marketSortBy === 'care' ? 'bold' : 'normal'}>Care Cases</Th>
