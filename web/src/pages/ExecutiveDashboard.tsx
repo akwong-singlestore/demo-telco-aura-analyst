@@ -37,6 +37,7 @@ import {
   useExecutiveKPIs,
   useMarketHealth,
   useAtRiskSubscribers,
+  useAtRiskSegments,
   useInterventionPerformance,
   useChurnRiskTrend,
   useIngestionRate
@@ -103,6 +104,7 @@ export const ExecutiveDashboard: React.FC = () => {
   const kpisRes = useExecutiveKPIs();
   const marketsRes = useMarketHealth();
   const atRiskRes = useAtRiskSubscribers();
+  const atRiskSegmentsRes = useAtRiskSegments();
   const interventionsRes = useInterventionPerformance();
   const churnTrendRes = useChurnRiskTrend();
   const ingestionRes = useIngestionRate();
@@ -110,6 +112,7 @@ export const ExecutiveDashboard: React.FC = () => {
   const kpis = kpisRes.data;
   const markets = marketsRes.data;
   const atRisk = atRiskRes.data;
+  const atRiskSegments = atRiskSegmentsRes.data;
   const interventions = interventionsRes.data;
   const churnTrend = churnTrendRes.data;
   const ingestion = ingestionRes.data;
@@ -117,6 +120,7 @@ export const ExecutiveDashboard: React.FC = () => {
   const kpisLoading = !kpisRes.data && !kpisRes.error;
   const marketsLoading = !marketsRes.data && !marketsRes.error;
   const atRiskLoading = !atRiskRes.data && !atRiskRes.error;
+  const atRiskSegmentsLoading = !atRiskSegmentsRes.data && !atRiskSegmentsRes.error;
   const interventionsLoading = !interventionsRes.data && !interventionsRes.error;
   const trendLoading = !churnTrendRes.data && !churnTrendRes.error;
 
@@ -561,34 +565,46 @@ export const ExecutiveDashboard: React.FC = () => {
             {/* At-Risk Segments */}
             <Box bg={cardBg} border="1px" borderColor={borderColor} borderRadius="lg" p={4}>
               <Heading size="sm" mb={4}>Top At-Risk Segments</Heading>
-              {atRiskLoading ? (
+              {atRiskSegmentsLoading ? (
                 <Flex justify="center" p={8}><Spinner size="sm" /></Flex>
-              ) : (
+              ) : atRiskSegments && atRiskSegments.length > 0 ? (
                 <Table size="sm" variant="simple">
                   <Thead>
                     <Tr>
-                      <Th fontSize="xs">Market</Th>
-                      <Th fontSize="xs">Risk</Th>
-                      <Th isNumeric fontSize="xs">Revenue</Th>
+                      <Th fontSize="xs">Segment</Th>
+                      <Th isNumeric fontSize="xs">Risk %</Th>
+                      <Th isNumeric fontSize="xs">$ at Risk</Th>
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {filteredAtRisk?.slice(0, 5).map((sub) => {
-                      const revenue = Number(sub.monthly_revenue) || 0;
+                    {atRiskSegments.slice(0, 5).map((segment, idx) => {
+                      const revenueAtRisk = Number(segment.revenue_at_risk) || 0;
+                      const riskPercent = Number(segment.churn_risk_percent) || 0;
                       return (
-                        <Tr key={sub.subscriber_id}>
-                          <Td fontSize="xs">{sub.market_name}</Td>
-                          <Td fontSize="xs">
-                            <Badge size="sm" colorScheme={sub.churn_risk_band === "critical" ? "red" : "orange"}>
-                              {sub.churn_risk_band}
+                        <Tr key={idx}>
+                          <Td fontSize="xs" maxW="120px" isTruncated>
+                            {segment.market_name}
+                            <Text as="span" color="gray.500" ml={1}>
+                              {segment.line_type}
+                            </Text>
+                          </Td>
+                          <Td isNumeric fontSize="xs">
+                            <Badge size="sm" colorScheme={riskPercent > 50 ? "red" : "orange"}>
+                              {riskPercent.toFixed(0)}%
                             </Badge>
                           </Td>
-                          <Td isNumeric fontSize="xs">${revenue.toFixed(0)}</Td>
+                          <Td isNumeric fontSize="xs" fontWeight="semibold">
+                            ${revenueAtRisk >= 1000 ? `${(revenueAtRisk / 1000).toFixed(1)}K` : revenueAtRisk.toFixed(0)}
+                          </Td>
                         </Tr>
                       );
                     })}
                   </Tbody>
                 </Table>
+              ) : (
+                <Flex h="120px" align="center" justify="center" color="gray.500" fontSize="sm">
+                  No at-risk segments found
+                </Flex>
               )}
             </Box>
           </Grid>

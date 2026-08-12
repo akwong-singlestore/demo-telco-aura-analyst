@@ -143,6 +143,49 @@ export const useAtRiskSubscribers = () => {
   });
 };
 
+// At-risk segments (aggregated by market and line type)
+export interface AtRiskSegment {
+  segment_name: string;
+  market_name: string;
+  line_type: string;
+  subscriber_count: number;
+  high_risk_count: number;
+  critical_risk_count: number;
+  churn_risk_percent: number;
+  revenue_at_risk: number;
+  avg_monthly_revenue: number;
+}
+
+export const getAtRiskSegments = async (config: ConnectionConfig): Promise<AtRiskSegment[]> => {
+  return await Query<AtRiskSegment>(
+    config,
+    `SELECT
+      CONCAT(m.market_name, ' - ', s.line_type) as segment_name,
+      m.market_name,
+      s.line_type,
+      COUNT(*) as subscriber_count,
+      SUM(CASE WHEN s.churn_risk_band = 'high' THEN 1 ELSE 0 END) as high_risk_count,
+      SUM(CASE WHEN s.churn_risk_band = 'critical' THEN 1 ELSE 0 END) as critical_risk_count,
+      (SUM(CASE WHEN s.churn_risk_band IN ('high', 'critical') THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as churn_risk_percent,
+      SUM(CASE WHEN s.churn_risk_band IN ('high', 'critical') THEN s.monthly_revenue ELSE 0 END) as revenue_at_risk,
+      AVG(s.monthly_revenue) as avg_monthly_revenue
+     FROM subscriber_master s
+     JOIN market_reference m ON s.home_market_id = m.market_id
+     WHERE s.churn_risk_band IN ('high', 'critical')
+     GROUP BY m.market_name, s.line_type, m.market_id
+     HAVING subscriber_count > 0
+     ORDER BY revenue_at_risk DESC
+     LIMIT 20`
+  );
+};
+
+export const useAtRiskSegments = () => {
+  const config = useRecoilValue(connectionConfig);
+  return useSWR(["at_risk_segments", config], () => getAtRiskSegments(config), {
+    refreshInterval: POLL_INTERVAL_MS * 2,
+  });
+};
+
 // Intervention effectiveness
 export interface InterventionPerformance {
   action_type: string;
