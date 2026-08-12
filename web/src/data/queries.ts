@@ -486,6 +486,30 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
       `);
     }
 
+    // Generate extra-fresh events in the last 5 minutes (for immediate demo viability)
+    // This ensures "Last 5 minutes" filter shows data right after setup
+    for (let minutesAgo = 0; minutesAgo < 5; minutesAgo++) {
+      await Query(config, `
+        INSERT INTO network_experience_events (event_ts, subscriber_id, cell_site_id, market_id, region_name, technology_type, event_type, severity, duration_seconds, impacted_service, resolved_flag)
+        SELECT
+          NOW(6) - INTERVAL ${minutesAgo} MINUTE - INTERVAL FLOOR(RAND() * 60) SECOND AS event_ts,
+          1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
+          cs.cell_site_id,
+          m.market_id,
+          m.region_name,
+          CASE FLOOR(RAND() * 3) WHEN 0 THEN '5G' WHEN 1 THEN '4G LTE' ELSE 'Wi-Fi' END AS technology_type,
+          CASE FLOOR(RAND() * 5) WHEN 0 THEN 'call_drop' WHEN 1 THEN 'slow_data' WHEN 2 THEN 'no_service' WHEN 3 THEN 'high_latency' ELSE 'poor_quality' END AS event_type,
+          CASE FLOOR(RAND() * 5) WHEN 0 THEN 'minor' WHEN 1 THEN 'major' WHEN 2 THEN 'critical' ELSE 'minor' END AS severity,
+          60 + FLOOR(RAND() * 600) AS duration_seconds,
+          CASE FLOOR(RAND() * 3) WHEN 0 THEN 'voice' WHEN 1 THEN 'data' ELSE 'messaging' END AS impacted_service,
+          RAND() < 0.8 AS resolved_flag
+        FROM market_reference m
+        CROSS JOIN cell_sites cs
+        WHERE m.market_id = cs.market_id
+        LIMIT 10;
+      `);
+    }
+
     // Generate network events spread across last 7 days (evenly distributed)
     // Create events at different time intervals to make time-range filtering meaningful
     for (let hoursAgo = 0; hoursAgo < 168; hoursAgo += 2) {
