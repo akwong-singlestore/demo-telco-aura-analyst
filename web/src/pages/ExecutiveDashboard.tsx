@@ -413,7 +413,7 @@ export const ExecutiveDashboard: React.FC = () => {
             />
           </Grid>
 
-          {/* Market Degradation Table */}
+          {/* Market Degradation Section */}
           <Box
             bg={cardBg}
             border="1px"
@@ -440,7 +440,65 @@ export const ExecutiveDashboard: React.FC = () => {
             {marketsLoading ? (
               <Flex justify="center" p={8}><Spinner /></Flex>
             ) : (
-              <Table size="sm" variant="simple">
+              <VStack spacing={4} align="stretch">
+                {/* Degradation Chart */}
+                {filteredMarkets && filteredMarkets.length > 0 && (
+                  <Box>
+                    <Plot
+                      data={[
+                        {
+                          type: 'bar',
+                          orientation: 'h',
+                          y: filteredMarkets
+                            .sort((a, b) => (b.degradation_index || 0) - (a.degradation_index || 0))
+                            .slice(0, 10)
+                            .map(m => m.market_name)
+                            .reverse(),
+                          x: filteredMarkets
+                            .sort((a, b) => (b.degradation_index || 0) - (a.degradation_index || 0))
+                            .slice(0, 10)
+                            .map(m => Number(m.degradation_index) || 0)
+                            .reverse(),
+                          marker: {
+                            color: filteredMarkets
+                              .sort((a, b) => (b.degradation_index || 0) - (a.degradation_index || 0))
+                              .slice(0, 10)
+                              .map(m => {
+                                const deg = Number(m.degradation_index) || 0;
+                                return deg > 50 ? '#F56565' : deg > 25 ? '#ED8936' : '#48BB78';
+                              })
+                              .reverse(),
+                          },
+                          hovertemplate: '<b>%{y}</b><br>Degradation: %{x:.0f}<extra></extra>',
+                        },
+                      ]}
+                      layout={{
+                        autosize: true,
+                        height: 280,
+                        margin: { l: 100, r: 20, b: 40, t: 10 },
+                        paper_bgcolor: chartIsDark ? "#2D3748" : "white",
+                        plot_bgcolor: chartIsDark ? "#2D3748" : "#EDF2F7",
+                        font: { color: chartIsDark ? "white" : "#2a3f5f", size: 11 },
+                        xaxis: {
+                          title: 'Degradation Index',
+                          range: [0, 100],
+                          showgrid: true,
+                          gridcolor: chartIsDark ? "#4A5568" : "#E2E8F0",
+                        },
+                        yaxis: {
+                          showgrid: false,
+                          automargin: true,
+                        },
+                      }}
+                      config={{ responsive: true, displayModeBar: false }}
+                      style={{ width: "100%", height: "280px" }}
+                    />
+                  </Box>
+                )}
+
+                {/* Market Table (limited height with scroll) */}
+                <Box maxH="400px" overflowY="auto">
+                  <Table size="sm" variant="simple">
                 <Thead>
                   <Tr>
                     <Th>Market</Th>
@@ -479,6 +537,8 @@ export const ExecutiveDashboard: React.FC = () => {
                   })}
                 </Tbody>
               </Table>
+                </Box>
+              </VStack>
             )}
           </Box>
 
