@@ -7,9 +7,14 @@ import seedStatements from "../../sql/seed.sql";
 import { proceduresDDL } from "./proceduresDDL";
 import { pipelinesDDL, startPipelines } from "./pipelinesDDL";
 
+// Configurable poll interval (default 5 seconds)
+const POLL_INTERVAL_MS = parseInt(import.meta.env.VITE_POLL_INTERVAL_MS || "5000");
+
 // Helper to convert time window string to SQL INTERVAL
 const timeWindowToInterval = (window: string): string => {
   switch (window) {
+    case "5m": return "5 MINUTE";
+    case "15m": return "15 MINUTE";
     case "1h": return "1 HOUR";
     case "2h": return "2 HOUR";
     case "24h": return "24 HOUR";
@@ -40,7 +45,7 @@ export const getMarketHealth = async (config: ConnectionConfig): Promise<Market[
 export const useMarketHealth = () => {
   const config = useRecoilValue(connectionConfig);
   return useSWR(["market_health", config], () => getMarketHealth(config), {
-    refreshInterval: 5000,
+    refreshInterval: POLL_INTERVAL_MS,
   });
 };
 
@@ -77,7 +82,32 @@ export const useExecutiveKPIs = () => {
   const config = useRecoilValue(connectionConfig);
   const window = useRecoilValue(timeWindow);
   return useSWR(["executive_kpis", config, window], () => getExecutiveKPIs(config, window), {
-    refreshInterval: 10000,
+    refreshInterval: POLL_INTERVAL_MS,
+  });
+};
+
+// Ingestion rate (events in last 60 seconds)
+export interface IngestionRate {
+  events_last_60s: number;
+  events_per_second: number;
+}
+
+export const getIngestionRate = async (config: ConnectionConfig): Promise<IngestionRate> => {
+  const result = await Query<{ count: number }>(
+    config,
+    `SELECT COUNT(*) as count FROM network_experience_events WHERE event_ts > NOW(6) - INTERVAL 60 SECOND`
+  );
+  const count = result[0]?.count || 0;
+  return {
+    events_last_60s: count,
+    events_per_second: parseFloat((count / 60).toFixed(1)),
+  };
+};
+
+export const useIngestionRate = () => {
+  const config = useRecoilValue(connectionConfig);
+  return useSWR(["ingestion_rate", config], () => getIngestionRate(config), {
+    refreshInterval: POLL_INTERVAL_MS,
   });
 };
 
@@ -109,7 +139,50 @@ export const getAtRiskSubscribers = async (config: ConnectionConfig): Promise<At
 export const useAtRiskSubscribers = () => {
   const config = useRecoilValue(connectionConfig);
   return useSWR(["at_risk_subscribers", config], () => getAtRiskSubscribers(config), {
-    refreshInterval: 10000,
+    refreshInterval: POLL_INTERVAL_MS * 2,
+  });
+};
+
+// At-risk segments (aggregated by market and line type)
+export interface AtRiskSegment {
+  segment_name: string;
+  market_name: string;
+  line_type: string;
+  subscriber_count: number;
+  high_risk_count: number;
+  critical_risk_count: number;
+  churn_risk_percent: number;
+  revenue_at_risk: number;
+  avg_monthly_revenue: number;
+}
+
+export const getAtRiskSegments = async (config: ConnectionConfig): Promise<AtRiskSegment[]> => {
+  return await Query<AtRiskSegment>(
+    config,
+    `SELECT
+      CONCAT(m.market_name, ' - ', s.line_type) as segment_name,
+      m.market_name,
+      s.line_type,
+      COUNT(*) as subscriber_count,
+      SUM(CASE WHEN s.churn_risk_band = 'high' THEN 1 ELSE 0 END) as high_risk_count,
+      SUM(CASE WHEN s.churn_risk_band = 'critical' THEN 1 ELSE 0 END) as critical_risk_count,
+      (SUM(CASE WHEN s.churn_risk_band IN ('high', 'critical') THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as churn_risk_percent,
+      SUM(CASE WHEN s.churn_risk_band IN ('high', 'critical') THEN s.monthly_revenue ELSE 0 END) as revenue_at_risk,
+      AVG(s.monthly_revenue) as avg_monthly_revenue
+     FROM subscriber_master s
+     JOIN market_reference m ON s.home_market_id = m.market_id
+     WHERE s.churn_risk_band IN ('high', 'critical')
+     GROUP BY m.market_name, s.line_type, m.market_id
+     HAVING subscriber_count > 0
+     ORDER BY revenue_at_risk DESC
+     LIMIT 20`
+  );
+};
+
+export const useAtRiskSegments = () => {
+  const config = useRecoilValue(connectionConfig);
+  return useSWR(["at_risk_segments", config], () => getAtRiskSegments(config), {
+    refreshInterval: POLL_INTERVAL_MS * 2,
   });
 };
 
@@ -211,7 +284,7 @@ export const useRecentNetworkEvents = (limit: number = 100) => {
   const config = useRecoilValue(connectionConfig);
   const window = useRecoilValue(timeWindow);
   return useSWR(["recent_network_events", config, window, limit], () => getRecentNetworkEvents(config, window, limit), {
-    refreshInterval: 5000,
+    refreshInterval: POLL_INTERVAL_MS,
   });
 };
 
@@ -413,6 +486,30 @@ export const resetSchema = async (config: ConnectionConfig): Promise<void> => {
       `);
     }
 
+    // Generate extra-fresh events in the last 5 minutes (for immediate demo viability)
+    // This ensures "Last 5 minutes" filter shows data right after setup
+    for (let minutesAgo = 0; minutesAgo < 5; minutesAgo++) {
+      await Query(config, `
+        INSERT INTO network_experience_events (event_ts, subscriber_id, cell_site_id, market_id, region_name, technology_type, event_type, severity, duration_seconds, impacted_service, resolved_flag)
+        SELECT
+          NOW(6) - INTERVAL ${minutesAgo} MINUTE - INTERVAL FLOOR(RAND() * 60) SECOND AS event_ts,
+          1000000 + FLOOR(RAND() * 1000) AS subscriber_id,
+          cs.cell_site_id,
+          m.market_id,
+          m.region_name,
+          CASE FLOOR(RAND() * 3) WHEN 0 THEN '5G' WHEN 1 THEN '4G LTE' ELSE 'Wi-Fi' END AS technology_type,
+          CASE FLOOR(RAND() * 5) WHEN 0 THEN 'call_drop' WHEN 1 THEN 'slow_data' WHEN 2 THEN 'no_service' WHEN 3 THEN 'high_latency' ELSE 'poor_quality' END AS event_type,
+          CASE FLOOR(RAND() * 5) WHEN 0 THEN 'minor' WHEN 1 THEN 'major' WHEN 2 THEN 'critical' ELSE 'minor' END AS severity,
+          60 + FLOOR(RAND() * 600) AS duration_seconds,
+          CASE FLOOR(RAND() * 3) WHEN 0 THEN 'voice' WHEN 1 THEN 'data' ELSE 'messaging' END AS impacted_service,
+          RAND() < 0.8 AS resolved_flag
+        FROM market_reference m
+        CROSS JOIN cell_sites cs
+        WHERE m.market_id = cs.market_id
+        LIMIT 10;
+      `);
+    }
+
     // Generate network events spread across last 7 days (evenly distributed)
     // Create events at different time intervals to make time-range filtering meaningful
     for (let hoursAgo = 0; hoursAgo < 168; hoursAgo += 2) {
@@ -495,21 +592,30 @@ export const connectToDB = async (config: ConnectionConfig): Promise<boolean> =>
 
 // Streaming simulation
 let streamingInterval: NodeJS.Timeout | null = null;
+let demoModeEnabled = false;
 
-export const startStreaming = async (config: ConnectionConfig): Promise<void> => {
+export const startStreaming = async (config: ConnectionConfig, demoMode: boolean = false): Promise<void> => {
   if (streamingInterval) {
     return; // Already streaming
   }
 
-  console.log('Starting data stream simulation...');
+  demoModeEnabled = demoMode;
+  console.log(demoMode ? '[Streaming] Starting in DEMO MODE (Phoenix scenario)' : '[Streaming] Starting data stream simulation...');
 
   streamingInterval = setInterval(async () => {
     try {
       console.log('[Streaming] Generating new data...');
-      // Get random subscriber IDs from existing subscribers
+
+      // In demo mode, focus on Phoenix market (market_id = 1)
+      let query = 'SELECT subscriber_id, home_market_id FROM subscriber_master ';
+      if (demoModeEnabled) {
+        query += 'WHERE home_market_id = 1 '; // Phoenix market
+      }
+      query += 'ORDER BY RAND() LIMIT 10'; // More subscribers in demo mode
+
       const subscribers = await Query<{ subscriber_id: number; home_market_id: number }>(
         config,
-        'SELECT subscriber_id, home_market_id FROM subscriber_master ORDER BY RAND() LIMIT 5'
+        query
       );
 
       if (subscribers.length === 0) {
@@ -517,8 +623,9 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
         return;
       }
 
-      // Generate new network events
-      for (const sub of subscribers.slice(0, 3)) {
+      // Generate new network events (more in demo mode)
+      const eventCount = demoModeEnabled ? 6 : 3;
+      for (const sub of subscribers.slice(0, eventCount)) {
         const cellSites = await Query<{ cell_site_id: number; market_id: number; site_name: string }>(
           config,
           `SELECT cell_site_id, market_id, site_name FROM cell_sites WHERE market_id = ${sub.home_market_id} ORDER BY RAND() LIMIT 1`
@@ -531,8 +638,12 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
             `SELECT region_name FROM market_reference WHERE market_id = ${site.market_id} LIMIT 1`
           );
 
-          const eventTypes = ['call_drop', 'slow_data', 'no_service', 'high_latency', 'poor_quality'];
-          const severities = ['minor', 'major', 'critical'];
+          const eventTypes = demoModeEnabled
+            ? ['high_latency', 'slow_data', 'no_service', 'call_drop'] // More severe in demo mode
+            : ['call_drop', 'slow_data', 'no_service', 'high_latency', 'poor_quality'];
+          const severities = demoModeEnabled
+            ? ['major', 'critical', 'major', 'critical'] // Higher severity in demo mode
+            : ['minor', 'major', 'critical'];
           const techTypes = ['5G', '4G LTE', 'Wi-Fi'];
           const services = ['voice', 'data', 'messaging'];
 
@@ -556,8 +667,9 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
         }
       }
 
-      // Occasionally generate care cases (30% chance)
-      if (Math.random() < 0.3 && subscribers.length > 0) {
+      // Occasionally generate care cases (higher rate in demo mode)
+      const careProbability = demoModeEnabled ? 0.5 : 0.3;
+      if (Math.random() < careProbability && subscribers.length > 0) {
         const sub = subscribers[Math.floor(Math.random() * subscribers.length)];
         const channels = ['phone', 'chat', 'email', 'store'];
         const issues = ['network_quality', 'billing', 'device_support', 'plan_change', 'technical_support'];
@@ -600,7 +712,7 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
     } catch (error) {
       console.error('[Streaming] Error:', error);
     }
-  }, 3000); // Insert new data every 3 seconds
+  }, 1500); // Insert new data every 1.5 seconds for better visibility
 };
 
 export const stopStreaming = (): void => {
@@ -619,11 +731,15 @@ export const updateSessions = async (config: ConnectionConfig): Promise<void> =>
   // Not implemented for telco demo
 };
 
-export const setSessionController = async (config: ConnectionConfig, enabled: boolean): Promise<void> => {
+export const setSessionController = async (config: ConnectionConfig, enabled: boolean, demoMode: boolean = false): Promise<void> => {
   // Control streaming simulation
   if (enabled) {
-    await startStreaming(config);
+    await startStreaming(config, demoMode);
   } else {
     stopStreaming();
   }
+};
+
+export const isDemoModeActive = (): boolean => {
+  return demoModeEnabled;
 };

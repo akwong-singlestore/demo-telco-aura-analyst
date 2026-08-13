@@ -18,12 +18,23 @@ func main() {
 	iterations := flag.Int("iterations", 10, "Number of iterations to generate")
 	tickInterval := flag.Duration("tick", 5*time.Second, "Tick interval")
 	partition := flag.Int("partition", 0, "Partition ID for parallel runs")
+	demoMode := flag.Bool("demo-mode", false, "Enable demo mode with Phoenix congestion scenario")
+	seed := flag.Int64("seed", 0, "Random seed for reproducibility (0 = use current time)")
 	flag.Parse()
 
 	ctx := context.Background()
 
+	// Set up random seed
+	var randSeed int64
+	if *seed != 0 {
+		randSeed = *seed
+		log.Printf("Using deterministic seed: %d", randSeed)
+	} else {
+		randSeed = time.Now().UnixNano()
+	}
+
 	state := &gen.State{
-		Rand:                rand.New(rand.NewSource(time.Now().UnixNano())),
+		Rand:                rand.New(rand.NewSource(randSeed)),
 		PartitionId:         *partition,
 		SubscriberCount:     *subscriberCount,
 		EventProbability:    0.02,
@@ -31,8 +42,20 @@ func main() {
 		RetentionActionProb: 0.03,
 	}
 
+	// Demo mode: force Phoenix congestion scenario
+	if *demoMode {
+		log.Println("DEMO MODE: Forcing Phoenix congestion scenario")
+		state.EventProbability = 0.05    // Higher baseline event rate
+		state.CareCaseProbability = 0.03 // Higher care volume
+	}
+
 	gen.InitReferenceData(state)
 	gen.InitSubscribers(state, *subscriberCount)
+
+	// Demo mode: start with Phoenix congestion scenario
+	if *demoMode {
+		gen.ForcePhoenixScenario(state)
+	}
 
 	log.Printf("Starting Parquet simulator: output=%s, prefix=%s, subscribers=%d, iterations=%d",
 		*outputDir, *prefix, *subscriberCount, *iterations)
@@ -40,6 +63,11 @@ func main() {
 	writer := output.NewParquetWriter(*outputDir, *prefix, *partition)
 
 	for i := 0; i < *iterations; i++ {
+		// In demo mode, keep Phoenix scenario active
+		if *demoMode && !gen.IsScenarioActive(state) {
+			gen.ForcePhoenixScenario(state)
+		}
+
 		networkEvents, usageSummaries, careCases, retentionActions := gen.GenerateEvents(state)
 
 		// Write to S3 in parallel

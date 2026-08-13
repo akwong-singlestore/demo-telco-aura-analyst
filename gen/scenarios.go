@@ -107,3 +107,30 @@ func AdvanceScenario(state *State) {
 		}
 	}
 }
+
+// ForcePhoenixScenario sets up a deterministic Phoenix congestion scenario for demos
+func ForcePhoenixScenario(state *State) {
+	phoenixScenario := &Scenario{
+		Name:              "Phoenix Congestion Spike",
+		Type:              "congestion",
+		AffectedMarketIDs: []int64{1}, // Phoenix market ID
+		AffectedDevices:   []string{},
+		Severity:          "major",
+		DurationTicks:     20, // Longer duration for demo
+		ImpactRate:        0.5, // 50% of subscribers affected
+	}
+
+	state.CurrentScenario = phoenixScenario
+	state.ScenarioTick = 0
+
+	// Mark affected subscribers
+	for i := range state.Subscribers {
+		sub := &state.Subscribers[i]
+		sub.AffectedByScenario = false
+
+		// Check if subscriber is in Phoenix market
+		if sub.HomeMarketID == 1 && state.Rand.Float64() < phoenixScenario.ImpactRate {
+			sub.AffectedByScenario = true
+		}
+	}
+}

@@ -27,8 +27,9 @@ import {
   Spinner,
   IconButton,
   Collapse,
+  Tooltip,
 } from "@chakra-ui/react";
-import { MdPeople, MdWarning, MdHeadset, MdTrendingUp, MdFilterList, MdClose, MdChat } from "react-icons/md";
+import { MdPeople, MdWarning, MdHeadset, MdTrendingUp, MdFilterList, MdClose, MdChat, MdInfoOutline } from "react-icons/md";
 import * as React from "react";
 import { useSetRecoilState, useRecoilState } from "recoil";
 import Plotly from "plotly.js-dist-min";
@@ -37,8 +38,10 @@ import {
   useExecutiveKPIs,
   useMarketHealth,
   useAtRiskSubscribers,
+  useAtRiskSegments,
   useInterventionPerformance,
-  useChurnRiskTrend
+  useChurnRiskTrend,
+  useIngestionRate
 } from "@/data/queries";
 import { analystPendingQuestion, analystChatOpen, timeWindow } from "@/data/recoil";
 
@@ -94,6 +97,7 @@ export const ExecutiveDashboard: React.FC = () => {
   const [selectedMarket, setSelectedMarket] = React.useState<string>("");
   const [selectedLineType, setSelectedLineType] = React.useState<string>("");
   const [selectedTechnology, setSelectedTechnology] = React.useState<string>("");
+  const [lastUpdateTime, setLastUpdateTime] = React.useState<Date>(new Date());
   const setPendingQuestion = useSetRecoilState(analystPendingQuestion);
   const setChatOpen = useSetRecoilState(analystChatOpen);
   const [selectedTimeWindow, setSelectedTimeWindow] = useRecoilState(timeWindow);
@@ -101,20 +105,32 @@ export const ExecutiveDashboard: React.FC = () => {
   const kpisRes = useExecutiveKPIs();
   const marketsRes = useMarketHealth();
   const atRiskRes = useAtRiskSubscribers();
+  const atRiskSegmentsRes = useAtRiskSegments();
   const interventionsRes = useInterventionPerformance();
   const churnTrendRes = useChurnRiskTrend();
+  const ingestionRes = useIngestionRate();
 
   const kpis = kpisRes.data;
   const markets = marketsRes.data;
   const atRisk = atRiskRes.data;
+  const atRiskSegments = atRiskSegmentsRes.data;
   const interventions = interventionsRes.data;
   const churnTrend = churnTrendRes.data;
+  const ingestion = ingestionRes.data;
 
   const kpisLoading = !kpisRes.data && !kpisRes.error;
   const marketsLoading = !marketsRes.data && !marketsRes.error;
   const atRiskLoading = !atRiskRes.data && !atRiskRes.error;
+  const atRiskSegmentsLoading = !atRiskSegmentsRes.data && !atRiskSegmentsRes.error;
   const interventionsLoading = !interventionsRes.data && !interventionsRes.error;
   const trendLoading = !churnTrendRes.data && !churnTrendRes.error;
+
+  // Update timestamp when data refreshes
+  React.useEffect(() => {
+    if (kpis || markets) {
+      setLastUpdateTime(new Date());
+    }
+  }, [kpis, markets]);
 
   const bgColor = useColorModeValue("gray.50", "gray.900");
   const cardBg = useColorModeValue("white", "gray.800");
@@ -304,6 +320,8 @@ export const ExecutiveDashboard: React.FC = () => {
               value={selectedTimeWindow}
               onChange={(e) => setSelectedTimeWindow(e.target.value)}
             >
+              <option value="5m">Last 5 minutes</option>
+              <option value="15m">Last 15 minutes</option>
               <option value="1h">Last 1 hour</option>
               <option value="2h">Last 2 hours</option>
               <option value="24h">Last 24 hours</option>
@@ -316,6 +334,50 @@ export const ExecutiveDashboard: React.FC = () => {
       {/* Main Content */}
       <Flex flex={1} direction="column" overflow="auto">
         <Container maxW="100%" py={6} px={8}>
+          {/* Live Indicator Header */}
+          <Flex justify="space-between" align="center" mb={4} ml={showFilters ? 0 : 12}>
+            <HStack spacing={3}>
+              <Badge
+                colorScheme="green"
+                fontSize="sm"
+                px={3}
+                py={1}
+                borderRadius="md"
+                display="flex"
+                alignItems="center"
+                gap={2}
+              >
+                <Box
+                  as="span"
+                  display="inline-block"
+                  w="8px"
+                  h="8px"
+                  borderRadius="50%"
+                  bg="green.400"
+                  animation="pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite"
+                  sx={{
+                    "@keyframes pulse": {
+                      "0%, 100%": { opacity: 1 },
+                      "50%": { opacity: 0.5 },
+                    },
+                  }}
+                />
+                LIVE
+              </Badge>
+              <Text fontSize="sm" color="gray.500">
+                Last updated: {lastUpdateTime.toLocaleTimeString()}
+              </Text>
+              {ingestion && (
+                <Text fontSize="sm" color="gray.500">
+                  • Events ingested (60s): <Text as="span" fontWeight="bold" color="blue.500">{ingestion.events_last_60s}</Text>
+                  {ingestion.events_per_second > 0 && (
+                    <Text as="span" ml={1}>({ingestion.events_per_second}/sec)</Text>
+                  )}
+                </Text>
+              )}
+            </HStack>
+          </Flex>
+
           {/* KPI Cards */}
           <Grid templateColumns="repeat(4, 1fr)" gap={4} mb={6}>
             <KPICard
@@ -352,7 +414,7 @@ export const ExecutiveDashboard: React.FC = () => {
             />
           </Grid>
 
-          {/* Market Degradation Table */}
+          {/* Market Degradation Section */}
           <Box
             bg={cardBg}
             border="1px"
@@ -379,12 +441,83 @@ export const ExecutiveDashboard: React.FC = () => {
             {marketsLoading ? (
               <Flex justify="center" p={8}><Spinner /></Flex>
             ) : (
-              <Table size="sm" variant="simple">
+              <VStack spacing={4} align="stretch">
+                {/* Degradation Chart */}
+                {filteredMarkets && filteredMarkets.length > 0 && (
+                  <Box>
+                    <Plot
+                      data={[
+                        {
+                          type: 'bar',
+                          orientation: 'h',
+                          y: filteredMarkets
+                            .sort((a, b) => (b.degradation_index || 0) - (a.degradation_index || 0))
+                            .slice(0, 10)
+                            .map(m => m.market_name)
+                            .reverse(),
+                          x: filteredMarkets
+                            .sort((a, b) => (b.degradation_index || 0) - (a.degradation_index || 0))
+                            .slice(0, 10)
+                            .map(m => Number(m.degradation_index) || 0)
+                            .reverse(),
+                          marker: {
+                            color: filteredMarkets
+                              .sort((a, b) => (b.degradation_index || 0) - (a.degradation_index || 0))
+                              .slice(0, 10)
+                              .map(m => {
+                                const deg = Number(m.degradation_index) || 0;
+                                return deg > 50 ? '#F56565' : deg > 25 ? '#ED8936' : '#48BB78';
+                              })
+                              .reverse(),
+                          },
+                          hovertemplate: '<b>%{y}</b><br>Degradation: %{x:.0f}<extra></extra>',
+                        },
+                      ]}
+                      layout={{
+                        autosize: true,
+                        height: 280,
+                        margin: { l: 100, r: 20, b: 40, t: 10 },
+                        paper_bgcolor: chartIsDark ? "#2D3748" : "white",
+                        plot_bgcolor: chartIsDark ? "#2D3748" : "#EDF2F7",
+                        font: { color: chartIsDark ? "white" : "#2a3f5f", size: 11 },
+                        xaxis: {
+                          title: 'Degradation Index',
+                          range: [0, 100],
+                          showgrid: true,
+                          gridcolor: chartIsDark ? "#4A5568" : "#E2E8F0",
+                        },
+                        yaxis: {
+                          showgrid: false,
+                          automargin: true,
+                        },
+                      }}
+                      config={{ responsive: true, displayModeBar: false }}
+                      style={{ width: "100%", height: "280px" }}
+                    />
+                  </Box>
+                )}
+
+                {/* Market Table (limited height with scroll) */}
+                <Box maxH="400px" overflowY="auto">
+                  <Table size="sm" variant="simple">
                 <Thead>
                   <Tr>
                     <Th>Market</Th>
                     <Th>Region</Th>
-                    <Th isNumeric fontWeight={marketSortBy === 'degraded' ? 'bold' : 'normal'}>Degradation Index</Th>
+                    <Th isNumeric fontWeight={marketSortBy === 'degraded' ? 'bold' : 'normal'}>
+                      <HStack spacing={1} justify="flex-end">
+                        <Text>Degradation Index</Text>
+                        <Tooltip
+                          label="Composite score (0-100) based on severe network events, impacted subscribers, and experience scores. Higher values indicate worse service quality."
+                          fontSize="xs"
+                          hasArrow
+                        >
+                          <span>
+                            <Icon as={MdInfoOutline} boxSize={3} color="gray.400" cursor="help" />
+                          </span>
+                        </Tooltip>
+                      </HStack>
+                    </Th>
                     <Th isNumeric>Severe Events (24h)</Th>
                     <Th isNumeric fontWeight={marketSortBy === 'churn' ? 'bold' : 'normal'}>Impacted Subs</Th>
                     <Th isNumeric fontWeight={marketSortBy === 'care' ? 'bold' : 'normal'}>Care Cases</Th>
@@ -418,6 +551,8 @@ export const ExecutiveDashboard: React.FC = () => {
                   })}
                 </Tbody>
               </Table>
+                </Box>
+              </VStack>
             )}
           </Box>
 
@@ -504,34 +639,46 @@ export const ExecutiveDashboard: React.FC = () => {
             {/* At-Risk Segments */}
             <Box bg={cardBg} border="1px" borderColor={borderColor} borderRadius="lg" p={4}>
               <Heading size="sm" mb={4}>Top At-Risk Segments</Heading>
-              {atRiskLoading ? (
+              {atRiskSegmentsLoading ? (
                 <Flex justify="center" p={8}><Spinner size="sm" /></Flex>
-              ) : (
+              ) : atRiskSegments && atRiskSegments.length > 0 ? (
                 <Table size="sm" variant="simple">
                   <Thead>
                     <Tr>
-                      <Th fontSize="xs">Market</Th>
-                      <Th fontSize="xs">Risk</Th>
-                      <Th isNumeric fontSize="xs">Revenue</Th>
+                      <Th fontSize="xs">Segment</Th>
+                      <Th isNumeric fontSize="xs">Risk %</Th>
+                      <Th isNumeric fontSize="xs">$ at Risk</Th>
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {filteredAtRisk?.slice(0, 5).map((sub) => {
-                      const revenue = Number(sub.monthly_revenue) || 0;
+                    {atRiskSegments.slice(0, 5).map((segment, idx) => {
+                      const revenueAtRisk = Number(segment.revenue_at_risk) || 0;
+                      const riskPercent = Number(segment.churn_risk_percent) || 0;
                       return (
-                        <Tr key={sub.subscriber_id}>
-                          <Td fontSize="xs">{sub.market_name}</Td>
-                          <Td fontSize="xs">
-                            <Badge size="sm" colorScheme={sub.churn_risk_band === "critical" ? "red" : "orange"}>
-                              {sub.churn_risk_band}
+                        <Tr key={idx}>
+                          <Td fontSize="xs" maxW="120px" isTruncated>
+                            {segment.market_name}
+                            <Text as="span" color="gray.500" ml={1}>
+                              {segment.line_type}
+                            </Text>
+                          </Td>
+                          <Td isNumeric fontSize="xs">
+                            <Badge size="sm" colorScheme={riskPercent > 50 ? "red" : "orange"}>
+                              {riskPercent.toFixed(0)}%
                             </Badge>
                           </Td>
-                          <Td isNumeric fontSize="xs">${revenue.toFixed(0)}</Td>
+                          <Td isNumeric fontSize="xs" fontWeight="semibold">
+                            ${revenueAtRisk >= 1000 ? `${(revenueAtRisk / 1000).toFixed(1)}K` : revenueAtRisk.toFixed(0)}
+                          </Td>
                         </Tr>
                       );
                     })}
                   </Tbody>
                 </Table>
+              ) : (
+                <Flex h="120px" align="center" justify="center" color="gray.500" fontSize="sm">
+                  No at-risk segments found
+                </Flex>
               )}
             </Box>
           </Grid>

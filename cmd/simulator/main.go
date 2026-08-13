@@ -15,7 +15,18 @@ func main() {
 	dsn := flag.String("dsn", "root:test@tcp(localhost:3306)/telco", "Database connection string")
 	subscriberCount := flag.Int("subscribers", 1000, "Number of subscribers to simulate")
 	tickInterval := flag.Duration("tick", 5*time.Second, "Tick interval")
+	demoMode := flag.Bool("demo-mode", false, "Enable demo mode with Phoenix congestion scenario")
+	seed := flag.Int64("seed", 0, "Random seed for reproducibility (0 = use current time)")
 	flag.Parse()
+
+	// Set up random seed
+	var randSeed int64
+	if *seed != 0 {
+		randSeed = *seed
+		log.Printf("Using deterministic seed: %d", randSeed)
+	} else {
+		randSeed = time.Now().UnixNano()
+	}
 
 	db, err := sql.Open("mysql", *dsn)
 	if err != nil {
@@ -24,11 +35,18 @@ func main() {
 	defer db.Close()
 
 	state := &gen.State{
-		Rand:                rand.New(rand.NewSource(time.Now().UnixNano())),
+		Rand:                rand.New(rand.NewSource(randSeed)),
 		SubscriberCount:     *subscriberCount,
 		EventProbability:    0.02,
 		CareCaseProbability: 0.01,
 		RetentionActionProb: 0.03, // Increased from 0.005 to 3% for better demo visibility
+	}
+
+	// Demo mode: force Phoenix congestion scenario
+	if *demoMode {
+		log.Println("DEMO MODE: Forcing Phoenix congestion scenario")
+		state.EventProbability = 0.05    // Higher baseline event rate
+		state.CareCaseProbability = 0.03 // Higher care volume
 	}
 
 	gen.InitReferenceData(state)
@@ -37,12 +55,22 @@ func main() {
 	// Insert subscribers into database
 	insertSubscribers(db, state.Subscribers)
 
+	// Demo mode: start with Phoenix congestion scenario
+	if *demoMode {
+		gen.ForcePhoenixScenario(state)
+	}
+
 	log.Printf("Simulator started with %d subscribers", *subscriberCount)
 
 	ticker := time.NewTicker(*tickInterval)
 	defer ticker.Stop()
 
 	for range ticker.C {
+		// In demo mode, keep Phoenix scenario active
+		if *demoMode && !gen.IsScenarioActive(state) {
+			gen.ForcePhoenixScenario(state)
+		}
+
 		networkEvents, usageSummaries, careCases, retentionActions := gen.GenerateEvents(state)
 
 		if len(networkEvents) > 0 {

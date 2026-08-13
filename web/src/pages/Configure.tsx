@@ -23,6 +23,7 @@ import {
   HStack,
   Spinner,
   useToast,
+  Checkbox,
 } from "@chakra-ui/react";
 import { ViewIcon, ViewOffIcon, CheckCircleIcon, WarningIcon, RepeatIcon, RepeatClockIcon } from "@chakra-ui/icons";
 import * as React from "react";
@@ -57,6 +58,7 @@ export const Configure: React.FC = () => {
   const [isResettingSchema, setIsResettingSchema] = React.useState(false);
   const [configSaved, setConfigSaved] = React.useState(false);
   const [streamingActive, setStreamingActive] = React.useState(false);
+  const [demoMode, setDemoMode] = React.useState(false);
 
   const toast = useToast();
   const bgColor = useColorModeValue("white", "gray.800");
@@ -143,13 +145,15 @@ export const Configure: React.FC = () => {
   const handleToggleStreaming = async () => {
     try {
       const newState = !streamingActive;
-      await setSessionController(config, newState);
+      await setSessionController(config, newState, demoMode);
       setStreamingActive(newState);
       setStreamingEnabled(newState);
       toast({
         title: newState ? "Data streaming started" : "Data streaming stopped",
         description: newState
-          ? "New events will be generated every 3 seconds"
+          ? demoMode
+            ? "Demo mode: Phoenix congestion scenario with elevated events every 1.5 seconds"
+            : "New events will be generated every 1.5 seconds"
           : "Data generation has been paused",
         status: "success",
         duration: 3000,
@@ -317,6 +321,18 @@ export const Configure: React.FC = () => {
           </Text>
 
           <Stack spacing={4}>
+            <Checkbox
+              isChecked={demoMode}
+              onChange={(e) => setDemoMode(e.target.checked)}
+              isDisabled={streamingActive}
+              colorScheme="orange"
+            >
+              <HStack spacing={2}>
+                <Text fontWeight="medium">Demo Mode (Phoenix Scenario)</Text>
+                {demoMode && <Badge colorScheme="orange">Phoenix</Badge>}
+              </HStack>
+            </Checkbox>
+
             <HStack spacing={4}>
               <Button
                 onClick={handleToggleStreaming}
@@ -336,10 +352,12 @@ export const Configure: React.FC = () => {
               )}
             </HStack>
 
-            <Alert status="info" fontSize="sm">
+            <Alert status={demoMode ? "warning" : "info"} fontSize="sm">
               <AlertIcon />
               <AlertDescription>
-                When streaming is active, new data is generated every 3 seconds to simulate real-time telco network events.
+                {demoMode
+                  ? "Demo mode focuses on Phoenix market with elevated congestion events (major/critical severity) for rehearsable demonstrations."
+                  : "When streaming is active, new data is generated every 1.5 seconds to simulate real-time telco network events."}
               </AlertDescription>
             </Alert>
           </Stack>
