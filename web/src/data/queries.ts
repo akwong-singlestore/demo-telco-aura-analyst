@@ -592,21 +592,30 @@ export const connectToDB = async (config: ConnectionConfig): Promise<boolean> =>
 
 // Streaming simulation
 let streamingInterval: NodeJS.Timeout | null = null;
+let demoModeEnabled = false;
 
-export const startStreaming = async (config: ConnectionConfig): Promise<void> => {
+export const startStreaming = async (config: ConnectionConfig, demoMode: boolean = false): Promise<void> => {
   if (streamingInterval) {
     return; // Already streaming
   }
 
-  console.log('Starting data stream simulation...');
+  demoModeEnabled = demoMode;
+  console.log(demoMode ? '[Streaming] Starting in DEMO MODE (Phoenix scenario)' : '[Streaming] Starting data stream simulation...');
 
   streamingInterval = setInterval(async () => {
     try {
       console.log('[Streaming] Generating new data...');
-      // Get random subscriber IDs from existing subscribers
+
+      // In demo mode, focus on Phoenix market (market_id = 1)
+      let query = 'SELECT subscriber_id, home_market_id FROM subscriber_master ';
+      if (demoModeEnabled) {
+        query += 'WHERE home_market_id = 1 '; // Phoenix market
+      }
+      query += 'ORDER BY RAND() LIMIT 10'; // More subscribers in demo mode
+
       const subscribers = await Query<{ subscriber_id: number; home_market_id: number }>(
         config,
-        'SELECT subscriber_id, home_market_id FROM subscriber_master ORDER BY RAND() LIMIT 5'
+        query
       );
 
       if (subscribers.length === 0) {
@@ -614,8 +623,9 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
         return;
       }
 
-      // Generate new network events
-      for (const sub of subscribers.slice(0, 3)) {
+      // Generate new network events (more in demo mode)
+      const eventCount = demoModeEnabled ? 6 : 3;
+      for (const sub of subscribers.slice(0, eventCount)) {
         const cellSites = await Query<{ cell_site_id: number; market_id: number; site_name: string }>(
           config,
           `SELECT cell_site_id, market_id, site_name FROM cell_sites WHERE market_id = ${sub.home_market_id} ORDER BY RAND() LIMIT 1`
@@ -628,8 +638,12 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
             `SELECT region_name FROM market_reference WHERE market_id = ${site.market_id} LIMIT 1`
           );
 
-          const eventTypes = ['call_drop', 'slow_data', 'no_service', 'high_latency', 'poor_quality'];
-          const severities = ['minor', 'major', 'critical'];
+          const eventTypes = demoModeEnabled
+            ? ['high_latency', 'slow_data', 'no_service', 'call_drop'] // More severe in demo mode
+            : ['call_drop', 'slow_data', 'no_service', 'high_latency', 'poor_quality'];
+          const severities = demoModeEnabled
+            ? ['major', 'critical', 'major', 'critical'] // Higher severity in demo mode
+            : ['minor', 'major', 'critical'];
           const techTypes = ['5G', '4G LTE', 'Wi-Fi'];
           const services = ['voice', 'data', 'messaging'];
 
@@ -653,8 +667,9 @@ export const startStreaming = async (config: ConnectionConfig): Promise<void> =>
         }
       }
 
-      // Occasionally generate care cases (30% chance)
-      if (Math.random() < 0.3 && subscribers.length > 0) {
+      // Occasionally generate care cases (higher rate in demo mode)
+      const careProbability = demoModeEnabled ? 0.5 : 0.3;
+      if (Math.random() < careProbability && subscribers.length > 0) {
         const sub = subscribers[Math.floor(Math.random() * subscribers.length)];
         const channels = ['phone', 'chat', 'email', 'store'];
         const issues = ['network_quality', 'billing', 'device_support', 'plan_change', 'technical_support'];
@@ -716,11 +731,15 @@ export const updateSessions = async (config: ConnectionConfig): Promise<void> =>
   // Not implemented for telco demo
 };
 
-export const setSessionController = async (config: ConnectionConfig, enabled: boolean): Promise<void> => {
+export const setSessionController = async (config: ConnectionConfig, enabled: boolean, demoMode: boolean = false): Promise<void> => {
   // Control streaming simulation
   if (enabled) {
-    await startStreaming(config);
+    await startStreaming(config, demoMode);
   } else {
     stopStreaming();
   }
+};
+
+export const isDemoModeActive = (): boolean => {
+  return demoModeEnabled;
 };
