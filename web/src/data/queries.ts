@@ -712,7 +712,7 @@ export const startStreaming = async (config: ConnectionConfig, demoMode: boolean
     } catch (error) {
       console.error('[Streaming] Error:', error);
     }
-  }, 3000); // Insert new data every 3 seconds
+  }, 1500); // Insert new data every 1.5 seconds for better visibility
 };
 
 export const stopStreaming = (): void => {

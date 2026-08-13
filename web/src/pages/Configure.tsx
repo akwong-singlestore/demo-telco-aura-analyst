@@ -152,8 +152,8 @@ export const Configure: React.FC = () => {
         title: newState ? "Data streaming started" : "Data streaming stopped",
         description: newState
           ? demoMode
-            ? "Demo mode: Phoenix congestion scenario with elevated events every 3 seconds"
-            : "New events will be generated every 3 seconds"
+            ? "Demo mode: Phoenix congestion scenario with elevated events every 1.5 seconds"
+            : "New events will be generated every 1.5 seconds"
           : "Data generation has been paused",
         status: "success",
         duration: 3000,
@@ -357,7 +357,7 @@ export const Configure: React.FC = () => {
               <AlertDescription>
                 {demoMode
                   ? "Demo mode focuses on Phoenix market with elevated congestion events (major/critical severity) for rehearsable demonstrations."
-                  : "When streaming is active, new data is generated every 3 seconds to simulate real-time telco network events."}
+                  : "When streaming is active, new data is generated every 1.5 seconds to simulate real-time telco network events."}
               </AlertDescription>
             </Alert>
           </Stack>

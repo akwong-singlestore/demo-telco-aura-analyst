@@ -335,7 +335,7 @@ export const ExecutiveDashboard: React.FC = () => {
       <Flex flex={1} direction="column" overflow="auto">
         <Container maxW="100%" py={6} px={8}>
           {/* Live Indicator Header */}
-          <Flex justify="space-between" align="center" mb={4}>
+          <Flex justify="space-between" align="center" mb={4} ml={showFilters ? 0 : 12}>
             <HStack spacing={3}>
               <Badge
                 colorScheme="green"
