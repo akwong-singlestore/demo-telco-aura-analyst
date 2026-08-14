@@ -406,7 +406,7 @@ export const ExecutiveDashboard: React.FC = () => {
             />
             <KPICard
               label="SLA Risk"
-              value="2.3%"
+              value={kpis?.high_risk_subscribers ? "2.3%" : "0.0%"}
               change="0.4 pp"
               isPositive={false}
               icon={MdWarning}

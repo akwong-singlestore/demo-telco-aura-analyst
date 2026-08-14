@@ -39,7 +39,7 @@ import {
   connectionConfig,
   simulatorEnabled,
 } from "@/data/recoil";
-import { schemaObjects, resetSchema, setSessionController, isStreaming } from "@/data/queries";
+import { schemaObjects, resetSchema, setSessionController, isStreaming, clearStreamingData } from "@/data/queries";
 
 export const Configure: React.FC = () => {
   const [host, setHost] = useRecoilState(connectionHost);
@@ -161,6 +161,25 @@ export const Configure: React.FC = () => {
     } catch (error) {
       toast({
         title: "Error toggling streaming",
+        description: error instanceof Error ? error.message : "Unknown error",
+        status: "error",
+        duration: 5000,
+      });
+    }
+  };
+
+  const handleClearStreamingData = async () => {
+    try {
+      await clearStreamingData(config);
+      toast({
+        title: "All event data cleared",
+        description: "Dashboard will be empty on next refresh. Start streaming to generate fresh data.",
+        status: "success",
+        duration: 4000,
+      });
+    } catch (error) {
+      toast({
+        title: "Error clearing data",
         description: error instanceof Error ? error.message : "Unknown error",
         status: "error",
         duration: 5000,
@@ -333,7 +352,7 @@ export const Configure: React.FC = () => {
               </HStack>
             </Checkbox>
 
-            <HStack spacing={4}>
+            <HStack spacing={4} wrap="wrap">
               <Button
                 onClick={handleToggleStreaming}
                 colorScheme={streamingActive ? "red" : "green"}
@@ -341,6 +360,15 @@ export const Configure: React.FC = () => {
                 size="md"
               >
                 {streamingActive ? "Stop Data Stream" : "Start Data Stream"}
+              </Button>
+              <Button
+                onClick={handleClearStreamingData}
+                colorScheme="orange"
+                variant="outline"
+                size="md"
+                isDisabled={streamingActive}
+              >
+                Reset Data
               </Button>
               {streamingActive && (
                 <Badge colorScheme="green" fontSize="md" px={3} py={1}>

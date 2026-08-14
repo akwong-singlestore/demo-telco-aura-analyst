@@ -38,7 +38,9 @@ export interface Market {
 export const getMarketHealth = async (config: ConnectionConfig): Promise<Market[]> => {
   return await Query<Market>(
     config,
-    `SELECT * FROM market_degradation_summary ORDER BY degradation_index DESC LIMIT 20`
+    `SELECT * FROM market_degradation_summary
+     WHERE severe_events_24h > 0 OR impacted_subscribers_24h > 0 OR care_cases_24h > 0
+     ORDER BY degradation_index DESC LIMIT 20`
   );
 };
 
@@ -742,4 +744,25 @@ export const setSessionController = async (config: ConnectionConfig, enabled: bo
 
 export const isDemoModeActive = (): boolean => {
   return demoModeEnabled;
+};
+
+// Clear all streaming/event data to reset demo (keeps reference data: markets, subscribers, cell sites)
+export const clearStreamingData = async (config: ConnectionConfig): Promise<void> => {
+  console.log('[Streaming] Clearing all event data...');
+
+  try {
+    // Truncate event tables - faster than DELETE and removes all rows including seed data
+    await Query(config, `TRUNCATE TABLE network_experience_events`);
+    await Query(config, `TRUNCATE TABLE care_cases`);
+    await Query(config, `TRUNCATE TABLE retention_actions`);
+    await Query(config, `TRUNCATE TABLE subscriber_usage_summary`);
+
+    // Reset all subscriber churn risk to 'low' for clean demo start
+    await Query(config, `UPDATE subscriber_master SET churn_risk_band = 'low'`);
+
+    console.log('[Streaming] All event data cleared successfully');
+  } catch (error) {
+    console.error('[Streaming] Error clearing data:', error);
+    throw error;
+  }
 };
