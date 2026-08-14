@@ -743,3 +743,36 @@ export const setSessionController = async (config: ConnectionConfig, enabled: bo
 export const isDemoModeActive = (): boolean => {
   return demoModeEnabled;
 };
+
+// Clear recent streaming data (last 2 hours) to reset demo
+export const clearStreamingData = async (config: ConnectionConfig): Promise<void> => {
+  console.log('[Streaming] Clearing recent data (last 2 hours)...');
+
+  try {
+    // Delete events from last 2 hours
+    await Query(config, `
+      DELETE FROM network_experience_events
+      WHERE event_ts > NOW(6) - INTERVAL 2 HOUR
+    `);
+
+    await Query(config, `
+      DELETE FROM care_cases
+      WHERE opened_ts > NOW(6) - INTERVAL 2 HOUR
+    `);
+
+    await Query(config, `
+      DELETE FROM retention_actions
+      WHERE action_ts > NOW(6) - INTERVAL 2 HOUR
+    `);
+
+    await Query(config, `
+      DELETE FROM subscriber_usage_summary
+      WHERE event_ts > NOW(6) - INTERVAL 2 HOUR
+    `);
+
+    console.log('[Streaming] Recent data cleared successfully');
+  } catch (error) {
+    console.error('[Streaming] Error clearing data:', error);
+    throw error;
+  }
+};
