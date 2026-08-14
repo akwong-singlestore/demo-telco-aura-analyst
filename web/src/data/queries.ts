@@ -38,7 +38,9 @@ export interface Market {
 export const getMarketHealth = async (config: ConnectionConfig): Promise<Market[]> => {
   return await Query<Market>(
     config,
-    `SELECT * FROM market_degradation_summary ORDER BY degradation_index DESC LIMIT 20`
+    `SELECT * FROM market_degradation_summary
+     WHERE severe_events_24h > 0 OR impacted_subscribers_24h > 0 OR care_cases_24h > 0
+     ORDER BY degradation_index DESC LIMIT 20`
   );
 };
 
