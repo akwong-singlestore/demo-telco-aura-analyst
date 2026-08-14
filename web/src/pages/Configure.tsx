@@ -173,7 +173,7 @@ export const Configure: React.FC = () => {
       await clearStreamingData(config);
       toast({
         title: "Streaming data cleared",
-        description: "Recent data (last 2 hours) has been deleted. Dashboard will reset on next refresh.",
+        description: "Recent data (last 24 hours) has been deleted. Dashboard will reset on next refresh.",
         status: "success",
         duration: 4000,
       });

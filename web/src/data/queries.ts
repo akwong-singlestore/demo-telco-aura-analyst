@@ -744,30 +744,30 @@ export const isDemoModeActive = (): boolean => {
   return demoModeEnabled;
 };
 
-// Clear recent streaming data (last 2 hours) to reset demo
+// Clear recent streaming data (last 24 hours) to reset demo
 export const clearStreamingData = async (config: ConnectionConfig): Promise<void> => {
-  console.log('[Streaming] Clearing recent data (last 2 hours)...');
+  console.log('[Streaming] Clearing recent data (last 24 hours)...');
 
   try {
-    // Delete events from last 2 hours
+    // Delete events from last 24 hours (matches market_degradation_summary view window)
     await Query(config, `
       DELETE FROM network_experience_events
-      WHERE event_ts > NOW(6) - INTERVAL 2 HOUR
+      WHERE event_ts > NOW(6) - INTERVAL 24 HOUR
     `);
 
     await Query(config, `
       DELETE FROM care_cases
-      WHERE opened_ts > NOW(6) - INTERVAL 2 HOUR
+      WHERE opened_ts > NOW(6) - INTERVAL 24 HOUR
     `);
 
     await Query(config, `
       DELETE FROM retention_actions
-      WHERE action_ts > NOW(6) - INTERVAL 2 HOUR
+      WHERE action_ts > NOW(6) - INTERVAL 24 HOUR
     `);
 
     await Query(config, `
       DELETE FROM subscriber_usage_summary
-      WHERE event_ts > NOW(6) - INTERVAL 2 HOUR
+      WHERE event_ts > NOW(6) - INTERVAL 24 HOUR
     `);
 
     console.log('[Streaming] Recent data cleared successfully');
