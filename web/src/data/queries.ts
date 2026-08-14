@@ -752,11 +752,13 @@ export const clearStreamingData = async (config: ConnectionConfig): Promise<void
 
   try {
     // Truncate event tables - faster than DELETE and removes all rows including seed data
-    // This keeps reference tables intact (market_reference, cell_sites, subscriber_master)
     await Query(config, `TRUNCATE TABLE network_experience_events`);
     await Query(config, `TRUNCATE TABLE care_cases`);
     await Query(config, `TRUNCATE TABLE retention_actions`);
     await Query(config, `TRUNCATE TABLE subscriber_usage_summary`);
+
+    // Reset all subscriber churn risk to 'low' for clean demo start
+    await Query(config, `UPDATE subscriber_master SET churn_risk_band = 'low'`);
 
     console.log('[Streaming] All event data cleared successfully');
   } catch (error) {
