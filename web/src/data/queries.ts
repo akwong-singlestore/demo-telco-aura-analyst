@@ -744,33 +744,19 @@ export const isDemoModeActive = (): boolean => {
   return demoModeEnabled;
 };
 
-// Clear recent streaming data (last 24 hours) to reset demo
+// Clear all streaming/event data to reset demo (keeps reference data: markets, subscribers, cell sites)
 export const clearStreamingData = async (config: ConnectionConfig): Promise<void> => {
-  console.log('[Streaming] Clearing recent data (last 24 hours)...');
+  console.log('[Streaming] Clearing all event data...');
 
   try {
-    // Delete events from last 24 hours (matches market_degradation_summary view window)
-    await Query(config, `
-      DELETE FROM network_experience_events
-      WHERE event_ts > NOW(6) - INTERVAL 24 HOUR
-    `);
+    // Truncate event tables - faster than DELETE and removes all rows including seed data
+    // This keeps reference tables intact (market_reference, cell_sites, subscriber_master)
+    await Query(config, `TRUNCATE TABLE network_experience_events`);
+    await Query(config, `TRUNCATE TABLE care_cases`);
+    await Query(config, `TRUNCATE TABLE retention_actions`);
+    await Query(config, `TRUNCATE TABLE subscriber_usage_summary`);
 
-    await Query(config, `
-      DELETE FROM care_cases
-      WHERE opened_ts > NOW(6) - INTERVAL 24 HOUR
-    `);
-
-    await Query(config, `
-      DELETE FROM retention_actions
-      WHERE action_ts > NOW(6) - INTERVAL 24 HOUR
-    `);
-
-    await Query(config, `
-      DELETE FROM subscriber_usage_summary
-      WHERE event_ts > NOW(6) - INTERVAL 24 HOUR
-    `);
-
-    console.log('[Streaming] Recent data cleared successfully');
+    console.log('[Streaming] All event data cleared successfully');
   } catch (error) {
     console.error('[Streaming] Error clearing data:', error);
     throw error;
